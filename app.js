@@ -6,7 +6,7 @@
   'use strict';
 
   var C = window.HausCore;
-  var APP_VERSION = '1.1';
+  var APP_VERSION = '1.2';
   var KEY_TODOS = 'hausbau.todos.v1';
   var KEY_NOTES = 'hausbau.notes.v1';
   var KEY_SETTINGS = 'hausbau.settings.v1';
@@ -18,7 +18,8 @@
     view: 'todos',
     editTodo: null,     // id oder null (= neu)
     newPos: 'bottom',
-    editNote: null
+    editNote: null,
+    expanded: {}        // aufgeklappte To-dos (nur für diese Sitzung)
   };
 
   /* -------------------------------------------------------------- Helfer */
@@ -255,16 +256,40 @@
       onclick: function () { completeTodo(t.id, row); }
     }, [el('span', { class: 'check-ring', 'aria-hidden': 'true' })]));
 
-    var body = el('button', { class: 'todo-body', type: 'button', onclick: function () { openTodo(t.id); } });
-    if (index === 0) body.appendChild(el('span', { class: 'next-label', text: 'Als Nächstes' }));
-    body.appendChild(el('span', { class: 'todo-title', text: t.title }));
-    body.appendChild(el('span', { class: 'todo-meta' }, metaParts(t)));
-    if (t.note) {
-      var first = t.note.split('\n').filter(function (l) { return l.trim(); })[0] || '';
-      body.appendChild(el('span', { class: 'todo-note' }, [icon('note'), first]));
-    }
-    row.appendChild(body);
+    row.appendChild(todoBody(t, row, metaParts(t)));
     return row;
+  }
+
+  // Zugeklappt nur der Titel; Antippen zeigt Beschreibung und Details
+  function todoBody(t, row, meta) {
+    var open = !!state.expanded[t.id];
+    var detailId = 'detail-' + t.id;
+    var detail = el('div', { class: 'todo-detail', id: detailId }, [
+      t.note
+        ? el('p', { class: 'todo-desc', text: t.note })
+        : el('p', { class: 'todo-desc is-empty', text: 'Keine Beschreibung.' }),
+      el('div', { class: 'todo-meta' }, meta),
+      el('div', { class: 'detail-actions' }, [
+        el('button', { class: 'pill', type: 'button', text: 'Bearbeiten', onclick: function () { openTodo(t.id); } })
+      ])
+    ]);
+    detail.hidden = !open;
+    var head = el('button', {
+      class: 'todo-head', type: 'button', 'aria-expanded': open ? 'true' : 'false', 'aria-controls': detailId,
+      onclick: function () {
+        var now = !state.expanded[t.id];
+        if (now) state.expanded[t.id] = true; else delete state.expanded[t.id];
+        detail.hidden = !now;
+        row.classList.toggle('is-open', now);
+        this.setAttribute('aria-expanded', now ? 'true' : 'false');
+      }
+    }, [
+      el('span', { class: 'todo-title', text: t.title }),
+      t.note ? el('span', { class: 'has-desc', title: 'Hat eine Beschreibung' }, [icon('note')]) : null,
+      el('span', { class: 'chev', 'aria-hidden': 'true' })
+    ]);
+    if (open) row.classList.add('is-open');
+    return el('div', { class: 'todo-body' }, [head, detail]);
   }
 
   function doneRow(t) {
@@ -273,14 +298,10 @@
       class: 'check is-checked', type: 'button', 'aria-label': '„' + t.title + '“ wieder öffnen',
       onclick: function () { setDone(t.id, false); toast('Wieder offen.'); }
     }, [el('span', { class: 'check-ring', 'aria-hidden': 'true' })]));
-    var body = el('button', { class: 'todo-body', type: 'button', onclick: function () { openTodo(t.id); } }, [
-      el('span', { class: 'todo-title', text: t.title }),
-      el('span', { class: 'todo-meta' }, [
-        el('span', { class: 'tag tag-' + t.phase, text: C.phaseLabel(t.phase) }),
-        t.doneAt ? el('span', { class: 'meta', text: 'erledigt ' + C.fmtDate(t.doneAt.slice(0, 10)) }) : null
-      ])
-    ]);
-    row.appendChild(body);
+    row.appendChild(todoBody(t, row, [
+      el('span', { class: 'tag tag-' + t.phase, text: C.phaseLabel(t.phase) }),
+      t.doneAt ? el('span', { class: 'meta', text: 'erledigt ' + C.fmtDate(t.doneAt.slice(0, 10)) }) : null
+    ]));
     return row;
   }
 

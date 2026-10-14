@@ -107,6 +107,23 @@ async function drag(page, from, to) {
   t = await titles(page);
   ok(t[0] === 'Termin beim Notar', 'neues To-do ganz oben', t[0]);
   ok(await page.isVisible('.reminder'), 'Erinnerung wird angezeigt');
+
+  // Zugeklappt nur der Titel, Antippen zeigt die Beschreibung
+  ok(!(await page.isVisible('#todoList .todo-row:first-child .todo-desc')), 'Beschreibung zugeklappt verborgen');
+  const h0 = (await (await page.$('#todoList .todo-row:first-child')).boundingBox()).height;
+  ok(h0 < 60, 'zugeklappter Block ist schmal', h0);
+  await page.click('#todoList .todo-row:first-child .todo-head');
+  ok((await page.textContent('#todoList .todo-row:first-child .todo-desc')) === 'Unterlagen: Ausweis, Kaufvertrag-Entwurf', 'Antippen zeigt Beschreibung');
+  await page.waitForTimeout(300);
+  await shot(page, '02b-aufgeklappt');
+  await page.click('#todoList .todo-row:first-child .todo-head');
+  ok(!(await page.isVisible('#todoList .todo-row:first-child .todo-desc')), 'nochmal Antippen klappt zu');
+  // Bearbeiten aus dem aufgeklappten Block
+  await page.click('#todoList .todo-row:first-child .todo-head');
+  await page.click('#todoList .todo-row:first-child .detail-actions .pill');
+  ok((await page.inputValue('#tTitle')) === 'Termin beim Notar' && (await page.inputValue('#tNote')).startsWith('Unterlagen'), 'Bearbeiten öffnet Editor mit Titel und Beschreibung');
+  await page.click('#todoDlg [data-close]');
+  await page.click('#todoList .todo-row:first-child .todo-head');
   await shot(page, '02-liste');
 
   // Erinnerung wegklicken
@@ -124,7 +141,8 @@ async function drag(page, from, to) {
   ok(t[0] === 'Termin beim Notar', 'Rückgängig stellt Position wieder her');
 
   // Erinnerung in der Zukunft feuert, wenn die Zeit erreicht ist
-  await page.click('#todoList .todo-row:nth-child(2) .todo-body');
+  await page.click('#todoList .todo-row:nth-child(2) .todo-head');
+  await page.click('#todoList .todo-row:nth-child(2) .detail-actions .pill');
   await page.click('[data-quick="tonight"]');
   await page.click('#todoForm button[type="submit"]');
   ok(!(await page.isVisible('.reminder')), 'zukünftige Erinnerung noch nicht sichtbar');

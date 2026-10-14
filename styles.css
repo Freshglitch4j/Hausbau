@@ -161,7 +161,7 @@ button { cursor: pointer; }
   background: var(--bg-elev);
   border: 1px solid var(--line-soft);
   border-radius: var(--radius);
-  min-height: 64px;
+  min-height: 50px;
   position: relative;
   transition: transform 0.18s ease, opacity 0.3s ease, background 0.2s;
 }
@@ -178,12 +178,15 @@ button { cursor: pointer; }
   border-color: var(--accent);
   background: linear-gradient(0deg, var(--accent-soft), var(--accent-soft)), var(--bg-elev);
 }
-.todo-row.is-overdue:not(.is-next) { border-color: var(--danger-soft); }
+/* Überfällig: roter Streifen links, auch im zugeklappten Zustand sichtbar */
+.todo-row.is-overdue { box-shadow: inset 3px 0 0 var(--danger); }
 .todo-row.is-completing { opacity: 0; transform: translateX(24px); }
 .todo-row.is-completing .todo-title { text-decoration: line-through; }
 
 .grip {
   flex: 0 0 44px;
+  align-self: flex-start;
+  height: 50px;
   border: 0;
   background: transparent;
   color: var(--text-faint);
@@ -198,11 +201,13 @@ button { cursor: pointer; }
 }
 .grip:active { cursor: grabbing; }
 .grip .rank { font-size: 12px; font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1.1; }
-.grip .dots { font-size: 20px; line-height: 1; }
+.grip .dots { font-size: 18px; line-height: 1; }
 .is-next .grip .rank { color: var(--accent); }
 
 .check {
   flex: 0 0 44px;
+  align-self: flex-start;
+  height: 50px;
   border: 0;
   background: transparent;
   display: grid;
@@ -230,38 +235,47 @@ button { cursor: pointer; }
   transform: rotate(45deg);
 }
 
-.todo-body {
-  flex: 1 1 auto;
-  min-width: 0;
+.todo-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.todo-head {
   border: 0;
   background: transparent;
   text-align: left;
-  padding: 11px 14px 11px 2px;
+  min-height: 50px;
+  padding: 8px 12px 8px 2px;
   display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-.next-label {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-weight: 700;
-  color: var(--accent);
-}
-.todo-title { font-size: 16.5px; font-weight: 550; line-height: 1.3; overflow-wrap: anywhere; }
-.is-next .todo-title { font-size: 18px; font-weight: 650; }
-.todo-meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13px; color: var(--text-dim); }
-.todo-note {
-  font-size: 13px;
-  color: var(--text-faint);
-  display: flex;
-  gap: 5px;
   align-items: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  gap: 8px;
+  width: 100%;
 }
-.todo-note svg { flex: 0 0 auto; }
+.todo-head .todo-title { flex: 1 1 auto; min-width: 0; }
+.has-desc { flex: 0 0 auto; color: var(--text-faint); display: inline-flex; }
+.chev {
+  flex: 0 0 auto;
+  width: 8px; height: 8px;
+  border: solid var(--text-faint);
+  border-width: 0 2px 2px 0;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.15s;
+  margin-right: 2px;
+}
+.is-open .chev { transform: translateY(2px) rotate(-135deg); }
+.todo-title { font-size: 16px; font-weight: 550; line-height: 1.3; overflow-wrap: anywhere; }
+.is-next .todo-title { font-weight: 700; }
+
+.todo-detail { padding: 0 14px 12px 2px; display: flex; flex-direction: column; gap: 10px; }
+.todo-desc {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+  border-top: 1px solid var(--line-soft);
+  padding-top: 10px;
+}
+.todo-desc.is-empty { color: var(--text-faint); font-style: italic; }
+.todo-meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13px; color: var(--text-dim); }
+.detail-actions { display: flex; gap: 8px; }
 
 .tag {
   font-size: 11.5px;
@@ -300,7 +314,7 @@ button { cursor: pointer; }
 .done-box summary::-webkit-details-marker { display: none; }
 .done-box summary::before { content: "›"; font-size: 20px; line-height: 1; transition: transform 0.15s; display: inline-block; }
 .done-box[open] summary::before { transform: rotate(90deg); }
-.todo-row.is-done { min-height: 52px; background: transparent; }
+.todo-row.is-done { background: transparent; }
 .todo-row.is-done .check { flex-basis: 52px; }
 .todo-row.is-done .todo-title { color: var(--text-dim); text-decoration: line-through; font-size: 15px; }
 

@@ -17,7 +17,9 @@ Server, keine Werbung, offline nutzbar.
   (Erledigt / Morgen wieder / OK) und als Handy-Benachrichtigung.
 - **In Kalender eintragen** (Google Kalender oder Kalenderdatei für den
   Samsung-Kalender) – für Termine, die auf keinen Fall untergehen dürfen.
-- **Notiz zu jedem To-do** und ein eigener Bereich **Notizen** für alles andere.
+- **Titel und Beschreibung**: In der Liste steht nur der Titel als schmaler
+  Block, Antippen klappt die Beschreibung auf. Dazu ein eigener Bereich
+  **Notizen** für alles andere.
 - **Abhaken** mit „Rückgängig“; erledigte To-dos landen unten unter „Erledigt“.
 - **Vorlage** mit rund 18 typischen Hausbau-Schritten zum Starten.
 - **Datensicherung** als Datei (Mehr → Sicherung speichern / laden).
@@ -67,10 +69,11 @@ das Handy online ist. Spätestens beim zweiten Öffnen ist die neue Version akti
 
 | Was | Wie |
 | --- | --- |
-| Neues To-do | Orangener **+**-Knopf unten rechts. „Einreihen: Ganz oben“ setzt es direkt an die Spitze. |
+| Neues To-do | Orangener **+**-Knopf unten rechts: **Titel**, direkt darunter die **Beschreibung**. „Einreihen: Ganz oben“ setzt es direkt an die Spitze. |
+| Beschreibung lesen | In der Liste steht nur der Titel als schmaler Block. Antippen klappt Beschreibung, Bereich, Frist und Erinnerung auf, nochmal antippen klappt zu. |
 | Reihenfolge ändern | Griff **⠿** (mit Platznummer) gedrückt halten und ziehen |
 | Erledigt | Kreis antippen – kurz danach „Rückgängig“ möglich |
-| Bearbeiten, Notiz, Frist, Erinnerung | Auf den Text des To-dos tippen |
+| Bearbeiten | Block aufklappen → **Bearbeiten** |
 | Löschen | Im To-do ganz unten |
 | Nach Bereich filtern | Chips oberhalb der Liste |
 

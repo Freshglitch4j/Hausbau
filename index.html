@@ -165,8 +165,13 @@
     </div>
     <div class="sheet-body">
       <label class="field">
-        <span class="lbl">Was ist zu tun?</span>
-        <input type="text" id="tTitle" maxlength="200" autocomplete="off" enterkeyhint="done" placeholder="z. B. Termin mit der Bank vereinbaren">
+        <span class="lbl">Titel</span>
+        <input type="text" id="tTitle" class="input-title" maxlength="200" autocomplete="off" enterkeyhint="next" placeholder="z. B. Termin mit der Bank vereinbaren">
+      </label>
+
+      <label class="field">
+        <span class="lbl">Beschreibung</span>
+        <textarea id="tNote" rows="4" placeholder="Was genau ist zu tun? Details, Ansprechpartner, Telefonnummern …"></textarea>
       </label>
 
       <div class="field">
@@ -204,11 +209,6 @@
         <button type="button" class="pill" data-quick="tomorrow">Morgen 8 Uhr</button>
         <button type="button" class="pill" data-quick="week">In 1 Woche</button>
       </div>
-
-      <label class="field">
-        <span class="lbl">Notiz</span>
-        <textarea id="tNote" rows="4" placeholder="Details, Ansprechpartner, Telefonnummern …"></textarea>
-      </label>
 
       <div class="sheet-actions" id="tActions">
         <div class="btnrow" id="tCal" hidden>
