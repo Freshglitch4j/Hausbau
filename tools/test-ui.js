@@ -162,6 +162,21 @@ async function drag(page, from, to) {
   ok(JSON.stringify(await titles(page)) === JSON.stringify(before), 'Reihenfolge bleibt nach Neustart');
   ok((await page.getAttribute('html', 'data-theme')) === 'light', 'Design bleibt nach Neustart');
 
+  // Installieren-Knopf: erscheint erst, wenn Chrome die Installation anbietet
+  ok(!(await page.isVisible('#installBar')), 'Installieren-Leiste anfangs verborgen');
+  await page.evaluate(() => {
+    const e = new Event('beforeinstallprompt');
+    e.prompt = () => { window.__prompted = true; };
+    e.userChoice = Promise.resolve({ outcome: 'accepted' });
+    window.dispatchEvent(e);
+  });
+  ok(await page.isVisible('#installBar'), 'Installieren-Leiste sichtbar');
+  await shot(page, '07-installieren');
+  await page.click('#installBtn');
+  ok(await page.evaluate(() => window.__prompted === true), 'Installieren ruft Chrome-Dialog auf');
+  await page.waitForTimeout(50);
+  ok(!(await page.isVisible('#installBar')), 'Leiste nach dem Installieren weg');
+
   ok(!errors.length, 'keine JS-Fehler', errors.join(' / '));
   await browser.close();
   srv.close();

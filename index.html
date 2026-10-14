@@ -28,6 +28,15 @@
       </div>
     </header>
 
+    <div class="installbar" id="installBar" hidden>
+      <div class="ib-text">
+        <strong>Als App installieren</strong>
+        <span>Eigenes Symbol, Vollbild, offline nutzbar.</span>
+      </div>
+      <button class="ib-btn" type="button" id="installBtn">Installieren</button>
+      <button class="ib-x" type="button" id="installHide" aria-label="Hinweis ausblenden">✕</button>
+    </div>
+
     <div id="reminderBox" class="reminders" aria-live="polite"></div>
 
     <div class="chips" id="phaseChips" role="tablist" aria-label="Bereich filtern"></div>
@@ -68,6 +77,12 @@
         <div class="sub">Einstellungen und Datensicherung</div>
       </div>
     </header>
+
+    <div class="card" id="installCard" hidden>
+      <h2>App installieren</h2>
+      <p class="note-small">Legt Hausbau als eigene App auf den Startbildschirm.</p>
+      <button class="btn btn-primary" type="button" id="installBtn2">Jetzt installieren</button>
+    </div>
 
     <div class="card">
       <h2>Erinnerungen</h2>

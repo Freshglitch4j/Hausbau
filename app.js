@@ -6,7 +6,7 @@
   'use strict';
 
   var C = window.HausCore;
-  var APP_VERSION = '1.0';
+  var APP_VERSION = '1.1';
   var KEY_TODOS = 'hausbau.todos.v1';
   var KEY_NOTES = 'hausbau.notes.v1';
   var KEY_SETTINGS = 'hausbau.settings.v1';
@@ -949,6 +949,57 @@
     }
   }
 
+  /* -------------------------------------------------------- Installieren */
+
+  // Eigener Installieren-Knopf über das Ereignis „beforeinstallprompt“.
+  // Er nutzt Chromes regulären Installationsweg und umgeht damit den
+  // Menüdialog „Installieren und Verknüpfung erstellen“, der auf manchen
+  // Geräten fälschlich „bereits installiert“ meldet.
+  var KEY_INSTALL_HIDE = 'hausbau.installHidden';
+  var installEvt = null;
+
+  function isStandalone() {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  }
+
+  function installUi() {
+    var can = !!installEvt && !isStandalone();
+    var hidden = false;
+    try { hidden = localStorage.getItem(KEY_INSTALL_HIDE) === '1'; } catch (e) { /* egal */ }
+    $('#installBar').hidden = !can || hidden;
+    $('#installCard').hidden = !can;
+  }
+
+  function doInstall() {
+    if (!installEvt) return;
+    var evt = installEvt;
+    installEvt = null;
+    evt.prompt();
+    evt.userChoice.then(function (choice) {
+      if (choice && choice.outcome === 'accepted') toast('Wird installiert – das Symbol erscheint gleich.');
+      installUi();
+    }).catch(function () { installUi(); });
+  }
+
+  function wireInstall() {
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      installEvt = e;
+      installUi();
+    });
+    window.addEventListener('appinstalled', function () {
+      installEvt = null;
+      installUi();
+      toast('Hausbau ist installiert.');
+    });
+    $('#installBtn').addEventListener('click', doInstall);
+    $('#installBtn2').addEventListener('click', doInstall);
+    $('#installHide').addEventListener('click', function () {
+      try { localStorage.setItem(KEY_INSTALL_HIDE, '1'); } catch (e) { /* egal */ }
+      installUi();
+    });
+  }
+
   function registerSW() {
     if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
     window.addEventListener('load', function () {
@@ -960,6 +1011,7 @@
     loadAll();
     applyTheme();
     wire();
+    wireInstall();
     renderAll();
     showView('todos');
     checkReminders();

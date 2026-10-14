@@ -50,8 +50,11 @@ mit **Merge pull request** übernehmen, damit die Dateien im Branch `main` liege
 ### Schritt 3 – Auf den Startbildschirm des Galaxy A55
 
 1. Die Adresse in **Chrome** öffnen.
-2. Drei Punkte oben rechts → **App installieren** (oder **Zum Startbildschirm
-   hinzufügen** → **Installieren**).
+2. Oben in der App erscheint die Leiste **Als App installieren** →
+   **Installieren** antippen. (Alternativ unter **Mehr → App installieren**.)
+   Der Knopf nutzt Chromes regulären Installationsweg und umgeht damit den
+   Menüdialog, der auf manchen Geräten fälschlich „bereits installiert“ meldet.
+   Die Leiste verschwindet, sobald die App installiert ist.
 3. Beim ersten Setzen einer Erinnerung fragt die App, ob sie Benachrichtigungen
    schicken darf → **Zulassen**.
 
