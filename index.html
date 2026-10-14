@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hausbau</title>
+<meta name="description" content="Hausbau-Planer: To-dos, Notizen und Erinnerungen. Alle Daten bleiben auf diesem Gerät.">
+<meta name="theme-color" content="#15181d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hausbau">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<main class="app">
+
+  <!-- ============================================================ TO-DOS -->
+  <section id="view-todos" class="view is-active" aria-label="To-dos">
+    <header class="topbar">
+      <div>
+        <h1>Hausbau</h1>
+        <div class="sub" id="todoSub">–</div>
+      </div>
+    </header>
+
+    <div id="reminderBox" class="reminders" aria-live="polite"></div>
+
+    <div class="chips" id="phaseChips" role="tablist" aria-label="Bereich filtern"></div>
+
+    <div id="todoList" class="todo-list" aria-label="Offene To-dos"></div>
+
+    <div id="todoEmpty" class="empty" hidden></div>
+
+    <details id="doneBox" class="done-box" hidden>
+      <summary><span id="doneTitle">Erledigt</span></summary>
+      <div id="doneList" class="todo-list is-done"></div>
+    </details>
+
+    <p class="hint" id="sortHint" hidden>Am Griff <span aria-hidden="true">⠿</span> ziehen, um die Reihenfolge zu ändern. Oben steht immer, was als Nächstes dran ist.</p>
+  </section>
+
+  <!-- ============================================================ NOTIZEN -->
+  <section id="view-notes" class="view" aria-label="Notizen">
+    <header class="topbar">
+      <div>
+        <h1>Notizen</h1>
+        <div class="sub" id="noteSub">–</div>
+      </div>
+    </header>
+    <div id="noteList" class="note-list"></div>
+    <div id="noteEmpty" class="empty" hidden>
+      <p><strong>Noch keine Notizen.</strong></p>
+      <p>Ideen, Telefonnummern, Fragen an den Architekten – alles, was du nicht vergessen willst.</p>
+      <button class="btn btn-primary" type="button" data-action="new-note">Erste Notiz schreiben</button>
+    </div>
+  </section>
+
+  <!-- ============================================================ MEHR -->
+  <section id="view-more" class="view" aria-label="Mehr">
+    <header class="topbar">
+      <div>
+        <h1>Mehr</h1>
+        <div class="sub">Einstellungen und Datensicherung</div>
+      </div>
+    </header>
+
+    <div class="card">
+      <h2>Erinnerungen</h2>
+      <p class="note-small" id="notifyStatus">–</p>
+      <button class="btn" type="button" id="notifyBtn">Benachrichtigungen erlauben</button>
+      <p class="note-small">
+        Android lässt Web-Apps keine Wecker stellen. Die App meldet fällige Erinnerungen deshalb,
+        solange sie geöffnet ist oder im Hintergrund noch läuft – und spätestens beim nächsten Öffnen.
+        Für Termine, die du auf keinen Fall verpassen darfst: im To-do auf
+        <strong>In Kalender eintragen</strong> tippen.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Darstellung</h2>
+      <div class="seg" id="themeSeg" role="radiogroup" aria-label="Farbschema">
+        <button type="button" role="radio" data-theme-choice="auto">Automatisch</button>
+        <button type="button" role="radio" data-theme-choice="dark">Dunkel</button>
+        <button type="button" role="radio" data-theme-choice="light">Hell</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Datensicherung</h2>
+      <p class="note-small">
+        Alle Daten liegen nur auf diesem Handy. Lege ab und zu eine Sicherung an –
+        z.&nbsp;B. vor einem Handywechsel oder wenn du den Browser-Speicher löschst.
+      </p>
+      <div class="btnrow">
+        <button class="btn" type="button" id="exportBtn">Sicherung speichern</button>
+        <button class="btn" type="button" id="importBtn">Sicherung laden</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+
+    <div class="card">
+      <h2>Vorlage</h2>
+      <p class="note-small">Fügt rund 18 typische Hausbau-Schritte unten an deine Liste an. Danach einfach löschen, was nicht passt, und den Rest sortieren.</p>
+      <button class="btn" type="button" id="sampleBtn">Typische Schritte hinzufügen</button>
+    </div>
+
+    <div class="card">
+      <h2>Zurücksetzen</h2>
+      <button class="btn btn-danger" type="button" id="wipeBtn">Alle Daten löschen</button>
+    </div>
+
+    <p class="foot" id="versionInfo">Hausbau</p>
+  </section>
+
+</main>
+
+<!-- Plus-Knopf -->
+<button class="fab" type="button" id="fab" aria-label="Neues To-do">
+  <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+
+<!-- Navigation -->
+<nav class="tabbar" aria-label="Bereiche">
+  <button type="button" class="tab is-active" data-view="todos">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.2 1.2L6.8 5M3.5 12l1.2 1.2 2.1-2.2M3.5 18l1.2 1.2 2.1-2.2"/></svg>
+    <span>To-dos</span>
+  </button>
+  <button type="button" class="tab" data-view="notes">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg>
+    <span>Notizen</span>
+  </button>
+  <button type="button" class="tab" data-view="more">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>
+    <span>Mehr</span>
+  </button>
+</nav>
+
+<!-- To-do bearbeiten -->
+<dialog id="todoDlg" class="sheet" aria-labelledby="todoDlgTitle">
+  <form method="dialog" id="todoForm" novalidate>
+    <div class="sheet-head">
+      <button type="button" class="linkbtn" data-close>Abbrechen</button>
+      <h2 id="todoDlgTitle">Neues To-do</h2>
+      <button type="submit" class="linkbtn linkbtn-strong">Speichern</button>
+    </div>
+    <div class="sheet-body">
+      <label class="field">
+        <span class="lbl">Was ist zu tun?</span>
+        <input type="text" id="tTitle" maxlength="200" autocomplete="off" enterkeyhint="done" placeholder="z. B. Termin mit der Bank vereinbaren">
+      </label>
+
+      <div class="field">
+        <span class="lbl">Bereich</span>
+        <div class="chips chips-wrap" id="tPhase" role="radiogroup" aria-label="Bereich"></div>
+      </div>
+
+      <div class="field" id="tPosField">
+        <span class="lbl">Einreihen</span>
+        <div class="seg" id="tPos" role="radiogroup" aria-label="Position in der Liste">
+          <button type="button" role="radio" data-pos="top">Ganz oben</button>
+          <button type="button" role="radio" data-pos="bottom">Ganz unten</button>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <label class="lbl" for="tDue">Erledigen bis</label>
+          <span class="inputwrap">
+            <input type="date" id="tDue">
+            <button type="button" class="clearbtn" data-clear="tDue" aria-label="Frist entfernen">×</button>
+          </span>
+        </div>
+        <div class="field">
+          <label class="lbl" for="tRemind">Erinnern am</label>
+          <span class="inputwrap">
+            <input type="datetime-local" id="tRemind">
+            <button type="button" class="clearbtn" data-clear="tRemind" aria-label="Erinnerung entfernen">×</button>
+          </span>
+        </div>
+      </div>
+      <div class="quick" id="tQuick">
+        <span class="lbl-inline">Erinnern:</span>
+        <button type="button" class="pill" data-quick="tonight">Heute 19 Uhr</button>
+        <button type="button" class="pill" data-quick="tomorrow">Morgen 8 Uhr</button>
+        <button type="button" class="pill" data-quick="week">In 1 Woche</button>
+      </div>
+
+      <label class="field">
+        <span class="lbl">Notiz</span>
+        <textarea id="tNote" rows="4" placeholder="Details, Ansprechpartner, Telefonnummern …"></textarea>
+      </label>
+
+      <div class="sheet-actions" id="tActions">
+        <div class="btnrow" id="tCal" hidden>
+          <button type="button" class="btn" id="tGcal">In Google Kalender</button>
+          <button type="button" class="btn" id="tIcs">Als Kalenderdatei</button>
+        </div>
+        <div class="btnrow" id="tEditOnly">
+          <button type="button" class="btn" id="tDoneBtn">Als erledigt markieren</button>
+          <button type="button" class="btn btn-danger" id="tDelete">Löschen</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<!-- Notiz bearbeiten -->
+<dialog id="noteDlg" class="sheet" aria-labelledby="noteDlgTitle">
+  <form method="dialog" id="noteForm" novalidate>
+    <div class="sheet-head">
+      <button type="button" class="linkbtn" data-close>Abbrechen</button>
+      <h2 id="noteDlgTitle">Neue Notiz</h2>
+      <button type="submit" class="linkbtn linkbtn-strong">Speichern</button>
+    </div>
+    <div class="sheet-body">
+      <label class="field">
+        <span class="lbl">Titel</span>
+        <input type="text" id="nTitle" maxlength="200" autocomplete="off" placeholder="optional">
+      </label>
+      <label class="field">
+        <span class="lbl">Notiz</span>
+        <textarea id="nText" rows="10" placeholder="Schreib einfach los …"></textarea>
+      </label>
+      <p class="note-small" id="nMeta"></p>
+      <div class="btnrow" id="nEditOnly">
+        <button type="button" class="btn btn-danger" id="nDelete">Notiz löschen</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button type="button" id="toastAction" hidden></button></div>
+
+<script src="core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
