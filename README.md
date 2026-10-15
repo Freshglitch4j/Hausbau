@@ -9,8 +9,10 @@ Server, keine Werbung, offline nutzbar.
 - **To-dos in deiner Reihenfolge** – oben steht immer, was als Nächstes dran ist
   (hervorgehoben als „Als Nächstes“). Umsortieren am Griff **⠿** links: gedrückt
   halten und nach oben oder unten ziehen. Am Bildschirmrand scrollt die Liste mit.
-- **Bereiche**: Planung, Finanzierung, Behörden, Bau, Ausbau, Sonstiges. Oben
-  per Chip filtern – auch in der gefilterten Ansicht lässt sich sortieren.
+- **Bereiche** frei festlegen (Mehr → Bereiche): umbenennen, hinzufügen,
+  löschen, umsortieren, Farbe wählen. Vorgabe: Planung, Finanzierung, Behörden,
+  Bau, Ausbau, Sonstiges. Oben per Chip filtern – auch in der gefilterten
+  Ansicht lässt sich sortieren.
 - **Frist** („Erledigen bis“) mit Hinweis „in 3 Tagen“ bzw. rot bei Überfälligem.
 - **Erinnerungen** mit Datum und Uhrzeit, Schnellwahl „Heute 19 Uhr“,
   „Morgen 8 Uhr“, „In 1 Woche“. Fällige Erinnerungen erscheinen oben in der App
@@ -18,8 +20,11 @@ Server, keine Werbung, offline nutzbar.
 - **In Kalender eintragen** (Google Kalender oder Kalenderdatei für den
   Samsung-Kalender) – für Termine, die auf keinen Fall untergehen dürfen.
 - **Titel und Beschreibung**: In der Liste steht nur der Titel als schmaler
-  Block, Antippen klappt die Beschreibung auf. Dazu ein eigener Bereich
-  **Notizen** für alles andere.
+  Block, Antippen klappt die Beschreibung auf.
+- **Personen**: alle, mit denen du beim Hausbau zu tun hast – Funktion und Name
+  (z. B. „Architekt · Alois Huber“), aufgeklappt eine freie Beschreibung für
+  Telefon, E-Mail, Adresse und Notizen. Telefonnummern, E-Mail- und
+  Internetadressen sind antippbar, dazu Knöpfe „Anrufen“ und „E-Mail“.
 - **Abhaken** mit „Rückgängig“; erledigte To-dos landen unten unter „Erledigt“.
 - **Vorlage** mit rund 18 typischen Hausbau-Schritten zum Starten.
 - **Datensicherung** als Datei (Mehr → Sicherung speichern / laden).
@@ -76,6 +81,9 @@ das Handy online ist. Spätestens beim zweiten Öffnen ist die neue Version akti
 | Bearbeiten | Block aufklappen → **Bearbeiten** |
 | Löschen | Im To-do ganz unten |
 | Nach Bereich filtern | Chips oberhalb der Liste |
+| Bereiche ändern | **Mehr → Bereiche**: Namen antippen, Farbpunkt antippen, × zum Löschen (die To-dos bleiben, stehen dann „ohne Bereich“) |
+| Person anlegen | Reiter **Personen** → **+**: Funktion, Name, Beschreibung |
+| Person ansehen | Antippen klappt die Beschreibung auf; Nummer oder Adresse antippen ruft an bzw. öffnet die E-Mail |
 
 ### Wie zuverlässig sind Erinnerungen?
 
@@ -99,7 +107,6 @@ Mit **Sicherung laden** holst du sie zurück.
 - Fotodokumentation (Fotos je Bauabschnitt/To-do, mit Datum)
 - Unteraufgaben bzw. Checklisten je To-do
 - Kosten und Budget-Übersicht
-- Kontakte (Architekt, Firmen, Behörden)
 - Zeitleiste/Bauphasen-Ansicht
 
 ---

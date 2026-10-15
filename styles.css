@@ -27,12 +27,15 @@
   --page: 16px;
   --shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
 
-  --ph-planung: #8fb0d9;
-  --ph-finanzen: #8ec29a;
-  --ph-behoerden: #c6a2e0;
-  --ph-bau: #e08a5f;
-  --ph-ausbau: #e3c06b;
-  --ph-sonstiges: #a4aab5;
+  /* Farben für Bereiche (frei zuordenbar) */
+  --ph-1: #8fb0d9;
+  --ph-2: #8ec29a;
+  --ph-3: #c6a2e0;
+  --ph-4: #e08a5f;
+  --ph-5: #e3c06b;
+  --ph-6: #a4aab5;
+  --ph-7: #6fc3c0;
+  --ph-8: #e693b4;
   color-scheme: dark;
 }
 
@@ -55,12 +58,14 @@
   --good: #3f7a3a;
   --shadow: 0 8px 22px rgba(40, 30, 20, 0.14);
 
-  --ph-planung: #2f6aa8;
-  --ph-finanzen: #2f7d45;
-  --ph-behoerden: #7b4aa6;
-  --ph-bau: #b6532a;
-  --ph-ausbau: #8f6a0b;
-  --ph-sonstiges: #6b665e;
+  --ph-1: #2f6aa8;
+  --ph-2: #2f7d45;
+  --ph-3: #7b4aa6;
+  --ph-4: #b6532a;
+  --ph-5: #8f6a0b;
+  --ph-6: #6b665e;
+  --ph-7: #1f7f7b;
+  --ph-8: #b03d6e;
   color-scheme: light;
 }
 
@@ -165,8 +170,8 @@ button { cursor: pointer; }
   position: relative;
   transition: transform 0.18s ease, opacity 0.3s ease, background 0.2s;
 }
-.todo-list.is-sorting .todo-row { transition: transform 0.16s ease; }
-.todo-list.is-sorting .todo-row.is-dragging {
+.is-sorting > * { transition: transform 0.16s ease; }
+.is-sorting > .is-dragging {
   transition: none;
   z-index: 5;
   box-shadow: var(--shadow);
@@ -286,12 +291,18 @@ button { cursor: pointer; }
   color: var(--ph, var(--text-dim));
   background: color-mix(in srgb, var(--ph, var(--text-dim)) 15%, transparent);
 }
-.tag-planung { --ph: var(--ph-planung); }
-.tag-finanzen { --ph: var(--ph-finanzen); }
-.tag-behoerden { --ph: var(--ph-behoerden); }
-.tag-bau { --ph: var(--ph-bau); }
-.tag-ausbau { --ph: var(--ph-ausbau); }
-.tag-sonstiges { --ph: var(--ph-sonstiges); }
+.ph-1 { --ph: var(--ph-1); }
+.ph-2 { --ph: var(--ph-2); }
+.ph-3 { --ph: var(--ph-3); }
+.ph-4 { --ph: var(--ph-4); }
+.ph-5 { --ph: var(--ph-5); }
+.ph-6 { --ph: var(--ph-6); }
+.ph-7 { --ph: var(--ph-7); }
+.ph-8 { --ph: var(--ph-8); }
+
+/* Bereichs-Auswahl im Editor in der jeweiligen Farbe */
+.chip-ph { border-color: color-mix(in srgb, var(--ph) 45%, var(--line)); }
+.chip-ph.is-on { background: var(--ph); border-color: var(--ph); color: var(--bg); }
 
 .meta { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
 .meta-overdue { color: var(--danger); font-weight: 600; }
@@ -491,30 +502,66 @@ button { cursor: pointer; }
 .note-small { font-size: 13px; color: var(--text-dim); }
 .foot { text-align: center; font-size: 12px; color: var(--text-faint); margin-top: 18px; }
 
-/* ----------------------------------------------------------- Notizen */
+/* ---------------------------------------------------------- Personen */
 
-.note-list { display: flex; flex-direction: column; gap: 8px; }
-.note-card {
-  border: 1px solid var(--line-soft);
-  background: var(--bg-elev);
-  border-radius: var(--radius);
-  padding: 13px 15px;
-  text-align: left;
+.contact-title { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.contact-role { font-size: 12px; font-weight: 650; letter-spacing: 0.02em; color: var(--accent); line-height: 1.25; overflow-wrap: anywhere; }
+.contact-row .todo-head { padding-left: 4px; }
+.contact-row .todo-detail { padding-left: 4px; }
+.todo-desc a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+a.pill { display: inline-flex; align-items: center; text-decoration: none; color: var(--text); }
+
+/* ---------------------------------------------------------- Bereiche */
+
+.phase-list { display: flex; flex-direction: column; margin: 4px 0 12px; }
+.phase-row {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--bg-elev);
+  position: relative;
 }
-.note-title { font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
-.note-preview {
-  color: var(--text-dim);
-  font-size: 14px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  overflow-wrap: anywhere;
+.phase-row .grip { align-self: center; height: 44px; flex-basis: 34px; padding: 0; }
+.phase-row.is-dragging { z-index: 5; box-shadow: var(--shadow); border-radius: 10px; background: var(--bg-elev-2); }
+.color-dot {
+  flex: 0 0 auto;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 3px solid var(--bg-elev);
+  box-shadow: 0 0 0 1px var(--line);
+  background: var(--ph);
+  padding: 0;
 }
-.note-date { color: var(--text-faint); font-size: 12px; }
+.phase-row .phase-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  padding: 6px 8px;
+  font-size: 16px;
+}
+.phase-row .phase-input:focus { outline: none; border-color: var(--accent); background: var(--bg); }
+.phase-count {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  min-width: 18px;
+  text-align: right;
+}
+.phase-del {
+  flex: 0 0 40px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 22px;
+  border-radius: 10px;
+}
 
 /* ------------------------------------------------------------ Dialog */
 

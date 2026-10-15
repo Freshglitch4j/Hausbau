@@ -6,20 +6,23 @@
   'use strict';
 
   var C = window.HausCore;
-  var APP_VERSION = '1.2';
+  var APP_VERSION = '1.3';
   var KEY_TODOS = 'hausbau.todos.v1';
-  var KEY_NOTES = 'hausbau.notes.v1';
+  var KEY_CONTACTS = 'hausbau.contacts.v1';
+  var KEY_NOTES = 'hausbau.notes.v1';      // bis 1.2 – wird zu Personen übernommen
   var KEY_SETTINGS = 'hausbau.settings.v1';
+  var NONE = '_none';                       // Filter „ohne Bereich“
 
   var state = {
     todos: [],          // Reihenfolge im Array = Priorität / Zeitachse
-    notes: [],
-    settings: { theme: 'auto', filter: 'all' },
+    contacts: [],       // Reihenfolge frei sortierbar
+    settings: { theme: 'auto', filter: 'all', phases: [] },
     view: 'todos',
     editTodo: null,     // id oder null (= neu)
     newPos: 'bottom',
-    editNote: null,
-    expanded: {}        // aufgeklappte To-dos (nur für diese Sitzung)
+    editPhase: '',
+    editContact: null,
+    expanded: {}        // aufgeklappte Einträge (nur für diese Sitzung)
   };
 
   /* -------------------------------------------------------------- Helfer */
@@ -87,23 +90,44 @@
   }
 
   function saveTodos() { return save(KEY_TODOS, state.todos); }
-  function saveNotes() { return save(KEY_NOTES, state.notes); }
+  function saveContacts() { return save(KEY_CONTACTS, state.contacts); }
   function saveSettings() { return save(KEY_SETTINGS, state.settings); }
 
+  var migratedNotes = 0;
   function loadAll() {
     state.todos = (load(KEY_TODOS, []) || []).map(C.normalizeTodo).filter(Boolean);
-    state.notes = (load(KEY_NOTES, []) || []).map(C.normalizeNote).filter(Boolean);
     var s = load(KEY_SETTINGS, {}) || {};
     state.settings.theme = ['auto', 'dark', 'light'].indexOf(s.theme) >= 0 ? s.theme : 'auto';
-    state.settings.filter = s.filter === 'all' || C.isPhase(s.filter) ? s.filter : 'all';
+    state.settings.phases = C.normalizePhases(s.phases);
+    state.settings.filter = validFilter(s.filter);
+
+    var contacts = load(KEY_CONTACTS, null);
+    state.contacts = (contacts || []).map(C.normalizeContact).filter(Boolean);
+    // Einmalig: Notizen aus Version 1.2 bei den Personen übernehmen
+    var notes = load(KEY_NOTES, null);
+    if (Array.isArray(notes) && notes.length) {
+      var add = notes.map(C.noteToContact).filter(Boolean);
+      state.contacts = state.contacts.concat(add);
+      if (saveContacts()) {
+        try { localStorage.removeItem(KEY_NOTES); } catch (e) { /* egal */ }
+        migratedNotes = add.length;
+      }
+    }
+  }
+
+  function phases() { return state.settings.phases; }
+  function phaseOf(t) { return C.findPhase(phases(), t.phase); }
+
+  function validFilter(f) {
+    return f === 'all' || f === NONE || C.findPhase(phases(), f) ? f : 'all';
   }
 
   function findTodo(id) {
     for (var i = 0; i < state.todos.length; i++) if (state.todos[i].id === id) return state.todos[i];
     return null;
   }
-  function findNote(id) {
-    for (var i = 0; i < state.notes.length; i++) if (state.notes[i].id === id) return state.notes[i];
+  function findContact(id) {
+    for (var i = 0; i < state.contacts.length; i++) if (state.contacts[i].id === id) return state.contacts[i];
     return null;
   }
 
@@ -111,7 +135,11 @@
 
   function visibleTodos() {
     var f = state.settings.filter;
-    return openTodos().filter(function (t) { return f === 'all' || t.phase === f; });
+    return openTodos().filter(function (t) {
+      if (f === 'all') return true;
+      if (f === NONE) return !phaseOf(t);
+      return t.phase === f;
+    });
   }
 
   /* ------------------------------------------------------------- Design */
@@ -141,7 +169,7 @@
     });
     var fab = $('#fab');
     fab.hidden = name === 'more';
-    fab.setAttribute('aria-label', name === 'notes' ? 'Neue Notiz' : 'Neues To-do');
+    fab.setAttribute('aria-label', name === 'people' ? 'Neue Person' : 'Neues To-do');
     if (name === 'more') renderMore();
     window.scrollTo(0, 0);
   }
@@ -181,7 +209,8 @@
     } else if (!vis.length) {
       empty.appendChild(el('p', { text: state.settings.filter === 'all'
         ? 'Alles erledigt. Stark!'
-        : 'Keine offenen To-dos im Bereich „' + C.phaseLabel(state.settings.filter) + '“.' }));
+        : state.settings.filter === NONE ? 'Keine offenen To-dos ohne Bereich.'
+          : 'Keine offenen To-dos im Bereich „' + C.phaseLabel(state.settings.filter, phases()) + '“.' }));
       empty.hidden = false;
     } else {
       empty.hidden = true;
@@ -202,8 +231,12 @@
     var box = $('#phaseChips');
     box.textContent = '';
     var counts = { all: open.length };
-    open.forEach(function (t) { counts[t.phase] = (counts[t.phase] || 0) + 1; });
-    var items = [{ id: 'all', label: 'Alle' }].concat(C.PHASES);
+    open.forEach(function (t) {
+      var k = phaseOf(t) ? t.phase : NONE;
+      counts[k] = (counts[k] || 0) + 1;
+    });
+    var items = [{ id: 'all', label: 'Alle' }].concat(phases());
+    if (counts[NONE] || state.settings.filter === NONE) items.push({ id: NONE, label: 'Ohne Bereich' });
     items.forEach(function (p) {
       var on = state.settings.filter === p.id;
       box.appendChild(el('button', {
@@ -222,7 +255,7 @@
   function metaParts(t) {
     var now = nowDate();
     var parts = [];
-    parts.push(el('span', { class: 'tag tag-' + t.phase, text: C.phaseLabel(t.phase) }));
+    parts.push(phaseTag(t));
     if (t.due) {
       var ds = C.dueState(t, now);
       parts.push(el('span', { class: 'meta' + (ds ? ' meta-' + ds : '') },
@@ -247,7 +280,7 @@
         if (ev.key === 'ArrowUp') { ev.preventDefault(); moveTodo(index, index - 1, true); }
         if (ev.key === 'ArrowDown') { ev.preventDefault(); moveTodo(index, index + 1, true); }
       },
-      onpointerdown: function (ev) { startDrag(ev, row); },
+      onpointerdown: function (ev) { startDrag(ev, row, $('#todoList'), function (a, b) { moveTodo(a, b); }); },
       oncontextmenu: function (ev) { ev.preventDefault(); }
     }, [el('span', { class: 'rank', text: String(index + 1) }), el('span', { class: 'dots', 'aria-hidden': 'true', text: '⠿' })]));
 
@@ -299,10 +332,15 @@
       onclick: function () { setDone(t.id, false); toast('Wieder offen.'); }
     }, [el('span', { class: 'check-ring', 'aria-hidden': 'true' })]));
     row.appendChild(todoBody(t, row, [
-      el('span', { class: 'tag tag-' + t.phase, text: C.phaseLabel(t.phase) }),
+      phaseTag(t),
       t.doneAt ? el('span', { class: 'meta', text: 'erledigt ' + C.fmtDate(t.doneAt.slice(0, 10)) }) : null
     ]));
     return row;
+  }
+
+  function phaseTag(t) {
+    var p = phaseOf(t);
+    return p ? el('span', { class: 'tag ph-' + p.color, text: p.label }) : null;
   }
 
   var ICONS = {
@@ -368,9 +406,8 @@
 
   // Ziehen per Zeigereignis – Finger und Maus. Unterschiedlich hohe Zeilen
   // werden berücksichtigt; am Bildschirmrand scrollt die Liste mit.
-  function startDrag(ev, row) {
+  function startDrag(ev, row, listBox, onDrop) {
     if (ev.button !== undefined && ev.button !== 0) return;
-    var listBox = $('#todoList');
     var rows = Array.prototype.slice.call(listBox.children);
     var index = rows.indexOf(row);
     if (index < 0 || rows.length < 2) return;
@@ -445,7 +482,7 @@
       listBox.classList.remove('is-sorting');
       document.body.classList.remove('no-select');
       if (target !== index) {
-        moveTodo(index, target);
+        onDrop(index, target);
         if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
       }
     }
@@ -460,7 +497,7 @@
   function addSamples() {
     var existing = {};
     state.todos.forEach(function (t) { existing[t.title.toLowerCase()] = true; });
-    var add = C.sampleTodos().filter(function (t) { return !existing[t.title.toLowerCase()]; });
+    var add = C.sampleTodos(nowDate(), phases()).filter(function (t) { return !existing[t.title.toLowerCase()]; });
     if (!add.length) { toast('Die typischen Schritte sind schon alle in deiner Liste.'); return; }
     state.todos = state.todos.concat(add);
     state.settings.filter = 'all';
@@ -510,7 +547,7 @@
     }
     // Liste neu zeichnen, wenn sich etwas geändert haben kann (Fristen, Erinnerungen) –
     // aber nicht mitten im Ziehen oder Abhaken
-    if (!$('#todoList.is-sorting') && !$('.todo-row.is-completing')) renderTodos();
+    if (!$('.is-sorting') && !$('.todo-row.is-completing')) renderTodos();
   }
 
   function showNotification(t) {
@@ -590,14 +627,25 @@
     return JSON.stringify([$('#tTitle').value, currentPhase(), $('#tDue').value, $('#tRemind').value, $('#tNote').value]);
   }
 
-  function currentPhase() {
-    var b = $('#tPhase .chip.is-on');
-    return b ? b.dataset.phase : 'planung';
+  function currentPhase() { return state.editPhase; }
+
+  // Bereichs-Chips im Editor – nochmal antippen hebt die Auswahl auf
+  function buildPhaseChips() {
+    var box = $('#tPhase');
+    box.textContent = '';
+    phases().forEach(function (p) {
+      box.appendChild(el('button', {
+        type: 'button', class: 'chip chip-ph ph-' + p.color, role: 'radio', 'data-phase': p.id, text: p.label,
+        onclick: function () { setPhase(state.editPhase === p.id ? '' : p.id); }
+      }));
+    });
+    $('#tPhaseNone').hidden = phases().length > 0;
   }
 
   function setPhase(id) {
+    state.editPhase = C.findPhase(phases(), id) ? id : '';
     $$('#tPhase .chip').forEach(function (b) {
-      var on = b.dataset.phase === id;
+      var on = b.dataset.phase === state.editPhase;
       b.classList.toggle('is-on', on);
       b.setAttribute('aria-checked', on ? 'true' : 'false');
     });
@@ -613,7 +661,8 @@
     state.editTodo = t ? t.id : null;
     $('#todoDlgTitle').textContent = t ? 'To-do' : 'Neues To-do';
     $('#tTitle').value = t ? t.title : '';
-    setPhase(t ? t.phase : (state.settings.filter !== 'all' ? state.settings.filter : 'planung'));
+    buildPhaseChips();
+    setPhase(t ? t.phase : state.settings.filter);
     $('#tDue').value = t ? t.due : '';
     $('#tRemind').value = t ? t.remindAt : '';
     $('#tNote').value = t ? t.note : '';
@@ -674,7 +723,7 @@
     }
     if (!saveTodos()) return;
     // Filter so lassen, aber sicherstellen, dass das neue To-do sichtbar ist
-    if (state.settings.filter !== 'all' && state.settings.filter !== t.phase) {
+    if (state.settings.filter !== 'all' && state.settings.filter !== (phaseOf(t) ? t.phase : NONE)) {
       state.settings.filter = 'all';
       saveSettings();
     }
@@ -731,80 +780,238 @@
       .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'termin';
   }
 
-  /* ---------------------------------------------------------- Notizen */
+  /* ---------------------------------------------------------- Personen */
 
-  function renderNotes() {
-    var list = $('#noteList');
+  function renderPeople() {
+    var list = $('#contactList');
     list.textContent = '';
-    var notes = state.notes.slice().sort(function (a, b) { return a.updatedAt < b.updatedAt ? 1 : -1; });
-    $('#noteSub').textContent = notes.length === 1 ? '1 Notiz' : notes.length + ' Notizen';
-    $('#noteEmpty').hidden = notes.length > 0;
-    notes.forEach(function (n) {
-      var lines = n.text.split('\n').filter(function (l) { return l.trim(); });
-      var title = n.title || lines.shift() || '';
-      list.appendChild(el('button', { class: 'note-card', type: 'button', onclick: function () { openNote(n.id); } }, [
-        el('span', { class: 'note-title', text: title }),
-        lines.length ? el('span', { class: 'note-preview', text: lines.join(' · ') }) : null,
-        el('span', { class: 'note-date', text: fmtStamp(n.updatedAt) })
-      ]));
-    });
+    var n = state.contacts.length;
+    $('#peopleSub').textContent = n === 1 ? '1 Person' : n + ' Personen';
+    $('#peopleEmpty').hidden = n > 0;
+    $('#peopleHint').hidden = n < 1;
+    state.contacts.forEach(function (c, i) { list.appendChild(contactRow(c, i, n)); });
   }
 
-  function fmtStamp(iso) {
-    var d = new Date(iso);
-    if (isNaN(d)) return '';
-    return C.fmtDate(C.isoDate(d)) + ', ' + C.pad(d.getHours()) + ':' + C.pad(d.getMinutes());
+  function contactLabel(c) { return [c.role, c.name].filter(Boolean).join(' · '); }
+
+  function contactRow(c, index, total) {
+    var row = el('div', { class: 'todo-row contact-row' });
+    row.dataset.id = c.id;
+    row.appendChild(el('button', {
+      class: 'grip', type: 'button',
+      'aria-label': '„' + contactLabel(c) + '“ verschieben, Platz ' + (index + 1) + ' von ' + total + '. Pfeiltasten oder ziehen.',
+      onkeydown: function (ev) {
+        if (ev.key === 'ArrowUp') { ev.preventDefault(); moveContact(index, index - 1, true); }
+        if (ev.key === 'ArrowDown') { ev.preventDefault(); moveContact(index, index + 1, true); }
+      },
+      onpointerdown: function (ev) { startDrag(ev, row, $('#contactList'), function (a, b) { moveContact(a, b); }); },
+      oncontextmenu: function (ev) { ev.preventDefault(); }
+    }, [el('span', { class: 'dots', 'aria-hidden': 'true', text: '⠿' })]));
+
+    var open = !!state.expanded[c.id];
+    var detailId = 'detail-' + c.id;
+    var segs = C.linkify(c.info || '');
+    var tel = segs.filter(function (s) { return s.type === 'tel'; })[0];
+    var mail = segs.filter(function (s) { return s.type === 'mail'; })[0];
+    var detail = el('div', { class: 'todo-detail', id: detailId }, [
+      c.info.trim()
+        ? el('p', { class: 'todo-desc' }, segs.map(function (s) {
+          return s.type === 'text' ? s.text
+            : el('a', { href: s.href, target: s.type === 'url' ? '_blank' : null, rel: s.type === 'url' ? 'noopener' : null, text: s.text });
+        }))
+        : el('p', { class: 'todo-desc is-empty', text: 'Noch keine Angaben.' }),
+      el('div', { class: 'detail-actions' }, [
+        tel ? el('a', { class: 'pill', href: tel.href, text: 'Anrufen' }) : null,
+        mail ? el('a', { class: 'pill', href: mail.href, text: 'E-Mail' }) : null,
+        el('button', { class: 'pill', type: 'button', text: 'Bearbeiten', onclick: function () { openContact(c.id); } })
+      ])
+    ]);
+    detail.hidden = !open;
+    var head = el('button', {
+      class: 'todo-head', type: 'button', 'aria-expanded': open ? 'true' : 'false', 'aria-controls': detailId,
+      onclick: function () {
+        var now = !state.expanded[c.id];
+        if (now) state.expanded[c.id] = true; else delete state.expanded[c.id];
+        detail.hidden = !now;
+        row.classList.toggle('is-open', now);
+        this.setAttribute('aria-expanded', now ? 'true' : 'false');
+      }
+    }, [
+      el('span', { class: 'contact-title' }, [
+        c.role ? el('span', { class: 'contact-role', text: c.role }) : null,
+        el('span', { class: 'todo-title', text: c.name || c.role })
+      ]),
+      el('span', { class: 'chev', 'aria-hidden': 'true' })
+    ]);
+    if (open) row.classList.add('is-open');
+    row.appendChild(el('div', { class: 'todo-body' }, [head, detail]));
+    return row;
   }
 
-  var noteSnapshot = '';
-  function noteFormValue() { return JSON.stringify([$('#nTitle').value, $('#nText').value]); }
-
-  function openNote(id) {
-    var n = id ? findNote(id) : null;
-    state.editNote = n ? n.id : null;
-    $('#noteDlgTitle').textContent = n ? 'Notiz' : 'Neue Notiz';
-    $('#nTitle').value = n ? n.title : '';
-    $('#nText').value = n ? n.text : '';
-    $('#nMeta').textContent = n ? 'Erstellt ' + fmtStamp(n.createdAt) + (n.updatedAt !== n.createdAt ? ' · geändert ' + fmtStamp(n.updatedAt) : '') : '';
-    $('#nEditOnly').hidden = !n;
-    autosize($('#nText'));
-    noteSnapshot = noteFormValue();
-    showDialog($('#noteDlg'), function () { return noteFormValue() !== noteSnapshot; });
-    if (!n) setTimeout(function () { $('#nText').focus(); }, 60);
+  function moveContact(from, to, refocus) {
+    var list = state.contacts;
+    if (to < 0 || to >= list.length || from === to) return;
+    list.splice(to, 0, list.splice(from, 1)[0]);
+    saveContacts();
+    renderPeople();
+    if (refocus) {
+      var grips = $$('#contactList .grip');
+      if (grips[to]) grips[to].focus();
+    }
   }
 
-  function saveNoteForm() {
-    var title = $('#nTitle').value.trim();
-    var text = $('#nText').value;
-    if (!title && !text.trim()) {
-      if (state.editNote) { deleteNote(true); return; }
-      closeDialog(true);
+  var contactSnapshot = '';
+  function contactFormValue() { return JSON.stringify([$('#cRole').value, $('#cName').value, $('#cInfo').value]); }
+
+  function openContact(id) {
+    var c = id ? findContact(id) : null;
+    state.editContact = c ? c.id : null;
+    $('#contactDlgTitle').textContent = c ? 'Person' : 'Neue Person';
+    $('#cRole').value = c ? c.role : '';
+    $('#cName').value = c ? c.name : '';
+    $('#cInfo').value = c ? c.info : '';
+    $('#cEditOnly').hidden = !c;
+    autosize($('#cInfo'));
+    contactSnapshot = contactFormValue();
+    showDialog($('#contactDlg'), function () { return contactFormValue() !== contactSnapshot; });
+    if (!c) setTimeout(function () { $('#cRole').focus(); }, 60);
+  }
+
+  function saveContactForm() {
+    var role = $('#cRole').value.trim();
+    var name = $('#cName').value.trim();
+    var info = $('#cInfo').value;
+    if (!role && !name) {
+      toast('Bitte Funktion oder Name eintragen.', { error: true });
+      $('#cRole').focus();
       return;
     }
     var stamp = new Date().toISOString();
-    var n = state.editNote ? findNote(state.editNote) : null;
-    if (n) {
-      if (n.title !== title || n.text !== text) { n.title = title; n.text = text; n.updatedAt = stamp; }
+    var c = state.editContact ? findContact(state.editContact) : null;
+    if (c) {
+      if (c.role !== role || c.name !== name || c.info !== info) {
+        c.role = role; c.name = name; c.info = info; c.updatedAt = stamp;
+      }
     } else {
-      state.notes.push(C.normalizeNote({ title: title, text: text, createdAt: stamp, updatedAt: stamp }));
+      c = C.normalizeContact({ role: role, name: name, info: info, createdAt: stamp, updatedAt: stamp });
+      state.contacts.push(c);
     }
-    if (!saveNotes()) return;
+    if (!saveContacts()) return;
     closeDialog(true);
-    renderNotes();
-    toast('Notiz gespeichert.');
+    renderPeople();
+    toast('Gespeichert.');
   }
 
-  function deleteNote(skipConfirm) {
-    var n = findNote(state.editNote);
-    if (!n) return;
-    if (!skipConfirm && !confirm('Diese Notiz löschen?')) return;
-    state.notes = state.notes.filter(function (x) { return x !== n; });
-    saveNotes();
+  function deleteContact() {
+    var c = findContact(state.editContact);
+    if (!c || !confirm('„' + shorten(contactLabel(c), 60) + '“ löschen?')) return;
+    var pos = state.contacts.indexOf(c);
+    state.contacts.splice(pos, 1);
+    saveContacts();
     closeDialog(true);
-    renderNotes();
-    toast('Notiz gelöscht.', {
+    renderPeople();
+    toast('Gelöscht.', {
       action: 'Rückgängig',
-      onAction: function () { state.notes.push(n); saveNotes(); renderNotes(); }
+      onAction: function () {
+        state.contacts.splice(Math.min(pos, state.contacts.length), 0, c);
+        saveContacts();
+        renderPeople();
+      }
+    });
+  }
+
+  /* ---------------------------------------------------------- Bereiche */
+
+  function renderPhases() {
+    var box = $('#phaseList');
+    box.textContent = '';
+    var list = phases();
+    list.forEach(function (p, index) {
+      var row = el('div', { class: 'phase-row' });
+      var used = state.todos.filter(function (t) { return t.phase === p.id; }).length;
+      row.appendChild(el('button', {
+        class: 'grip', type: 'button',
+        'aria-label': 'Bereich „' + p.label + '“ verschieben. Pfeiltasten oder ziehen.',
+        onkeydown: function (ev) {
+          if (ev.key === 'ArrowUp') { ev.preventDefault(); movePhase(index, index - 1, true); }
+          if (ev.key === 'ArrowDown') { ev.preventDefault(); movePhase(index, index + 1, true); }
+        },
+        onpointerdown: function (ev) { startDrag(ev, row, box, function (a, b) { movePhase(a, b); }); },
+        oncontextmenu: function (ev) { ev.preventDefault(); }
+      }, [el('span', { class: 'dots', 'aria-hidden': 'true', text: '⠿' })]));
+      row.appendChild(el('button', {
+        class: 'color-dot ph-' + p.color, type: 'button', 'aria-label': 'Farbe von „' + p.label + '“ ändern',
+        onclick: function () {
+          p.color = p.color % C.COLORS + 1;
+          savePhases();
+        }
+      }));
+      row.appendChild(el('input', {
+        type: 'text', class: 'phase-input', value: p.label, maxlength: '40', 'aria-label': 'Name des Bereichs',
+        enterkeyhint: 'done',
+        onkeydown: function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); this.blur(); } },
+        onchange: function () {
+          var v = this.value.trim();
+          if (!v) { this.value = p.label; return; }
+          p.label = v;
+          savePhases(true);
+        }
+      }));
+      row.appendChild(el('span', { class: 'phase-count', text: used ? String(used) : '' , title: used + ' To-dos' }));
+      row.appendChild(el('button', {
+        class: 'phase-del', type: 'button', text: '×', 'aria-label': 'Bereich „' + p.label + '“ löschen',
+        onclick: function () { deletePhase(p); }
+      }));
+      box.appendChild(row);
+    });
+    if (!list.length) box.appendChild(el('p', { class: 'note-small', text: 'Keine Bereiche – die To-dos stehen dann einfach ohne Bereich in der Liste.' }));
+  }
+
+  // keepInputs: beim Umbenennen nicht neu zeichnen, sonst springt der Fokus
+  function savePhases(keepInputs) {
+    state.settings.filter = validFilter(state.settings.filter);
+    saveSettings();
+    if (!keepInputs) renderPhases();
+    renderTodos();
+  }
+
+  function movePhase(from, to, refocus) {
+    var list = phases();
+    if (to < 0 || to >= list.length || from === to) return;
+    list.splice(to, 0, list.splice(from, 1)[0]);
+    savePhases();
+    if (refocus) {
+      var grips = $$('#phaseList .grip');
+      if (grips[to]) grips[to].focus();
+    }
+  }
+
+  function addPhase() {
+    var list = phases();
+    var p = { id: 'b' + C.uid(), label: 'Neuer Bereich', color: C.nextColor(list) };
+    list.push(p);
+    savePhases();
+    var inputs = $$('#phaseList .phase-input');
+    var inp = inputs[inputs.length - 1];
+    if (inp) { inp.focus(); inp.select(); }
+  }
+
+  function deletePhase(p) {
+    var affected = state.todos.filter(function (t) { return t.phase === p.id; });
+    var msg = '„' + p.label + '“ löschen?';
+    if (affected.length) msg += '\n\n' + affected.length + (affected.length === 1 ? ' To-do ist' : ' To-dos sind') +
+      ' diesem Bereich zugeordnet. Sie bleiben erhalten, stehen dann aber ohne Bereich.';
+    if (!confirm(msg)) return;
+    var list = phases();
+    var pos = list.indexOf(p);
+    list.splice(pos, 1);
+    savePhases();
+    toast('Bereich gelöscht.', {
+      action: 'Rückgängig',
+      onAction: function () {
+        list.splice(Math.min(pos, list.length), 0, p);
+        savePhases();
+      }
     });
   }
 
@@ -820,12 +1027,13 @@
     }[p];
     $('#notifyStatus').textContent = status;
     $('#notifyBtn').hidden = p !== 'default';
-    var total = state.todos.length;
-    $('#versionInfo').textContent = 'Hausbau ' + APP_VERSION + ' · ' + total + ' To-dos · ' + state.notes.length + ' Notizen · alles lokal gespeichert';
+    renderPhases();
+    $('#versionInfo').textContent = 'Hausbau ' + APP_VERSION + ' · ' + state.todos.length + ' To-dos · ' +
+      state.contacts.length + ' Personen · alles lokal gespeichert';
   }
 
   function exportData() {
-    var data = C.makeBackup(state.todos, state.notes);
+    var data = C.makeBackup(state.todos, state.contacts, phases());
     downloadFile('hausbau-sicherung-' + C.isoDate(nowDate()) + '.json', JSON.stringify(data, null, 2), 'application/json');
     toast('Sicherung gespeichert (Ordner „Downloads“).');
   }
@@ -836,11 +1044,13 @@
     reader.onload = function () {
       var data;
       try { data = C.parseBackup(String(reader.result)); } catch (e) { toast(e.message, { error: true }); return; }
-      if (!confirm('Sicherung mit ' + data.todos.length + ' To-dos und ' + data.notes.length +
-        ' Notizen laden? Die aktuellen Daten auf diesem Handy werden dabei ersetzt.')) return;
+      if (!confirm('Sicherung mit ' + data.todos.length + ' To-dos und ' + data.contacts.length +
+        ' Personen laden? Die aktuellen Daten auf diesem Handy werden dabei ersetzt.')) return;
       state.todos = data.todos;
-      state.notes = data.notes;
-      saveTodos(); saveNotes();
+      state.contacts = data.contacts;
+      if (data.phases) state.settings.phases = data.phases;
+      state.settings.filter = validFilter(state.settings.filter);
+      saveTodos(); saveContacts(); saveSettings();
       renderAll();
       toast('Sicherung geladen.');
     };
@@ -849,10 +1059,10 @@
   }
 
   function wipe() {
-    if (!confirm('Wirklich alle To-dos und Notizen löschen? Das lässt sich nicht rückgängig machen.')) return;
+    if (!confirm('Wirklich alle To-dos und Personen löschen? Das lässt sich nicht rückgängig machen.')) return;
     state.todos = [];
-    state.notes = [];
-    saveTodos(); saveNotes();
+    state.contacts = [];
+    saveTodos(); saveContacts();
     renderAll();
     toast('Alle Daten gelöscht.');
   }
@@ -866,7 +1076,7 @@
 
   function renderAll() {
     renderTodos();
-    renderNotes();
+    renderPeople();
     renderMore();
   }
 
@@ -875,22 +1085,13 @@
   function wire() {
     $$('.tab').forEach(function (b) { b.addEventListener('click', function () { showView(b.dataset.view); }); });
     $('#fab').addEventListener('click', function () {
-      if (state.view === 'notes') openNote(null); else openTodo(null);
+      if (state.view === 'people') openContact(null); else openTodo(null);
     });
-    $$('[data-action="new-note"]').forEach(function (b) { b.addEventListener('click', function () { openNote(null); }); });
-
-    // Bereichs-Auswahl im Editor
-    var phaseBox = $('#tPhase');
-    C.PHASES.forEach(function (p) {
-      phaseBox.appendChild(el('button', {
-        type: 'button', class: 'chip', role: 'radio', 'data-phase': p.id, text: p.label,
-        onclick: function () { setPhase(p.id); }
-      }));
-    });
+    $$('[data-action="new-contact"]').forEach(function (b) { b.addEventListener('click', function () { openContact(null); }); });
     $$('#tPos [data-pos]').forEach(function (b) { b.addEventListener('click', function () { setPos(b.dataset.pos); }); });
 
     $('#todoForm').addEventListener('submit', function (ev) { ev.preventDefault(); saveTodoForm(); });
-    $('#noteForm').addEventListener('submit', function (ev) { ev.preventDefault(); saveNoteForm(); });
+    $('#contactForm').addEventListener('submit', function (ev) { ev.preventDefault(); saveContactForm(); });
     $$('[data-close]').forEach(function (b) { b.addEventListener('click', function () { closeDialog(false); }); });
     $$('dialog').forEach(function (d) {
       // Escape bzw. Zurück-Geste über das Dialog-Element selbst
@@ -906,15 +1107,16 @@
       $(s).addEventListener('change', updateCalButtons);
     });
     $('#tNote').addEventListener('input', function () { autosize(this); });
-    $('#nText').addEventListener('input', function () { autosize(this); });
+    $('#cInfo').addEventListener('input', function () { autosize(this); });
 
     $('#tGcal').addEventListener('click', function () {
-      var url = C.gcalUrl(formTodo());
+      var f = formTodo();
+      var url = C.gcalUrl(f, C.phaseLabel(f.phase, phases()));
       if (url) window.open(url, '_blank', 'noopener');
     });
     $('#tIcs').addEventListener('click', function () {
       var f = formTodo();
-      var ics = C.icsText(f);
+      var ics = C.icsText(f, nowDate(), C.phaseLabel(f.phase, phases()));
       if (ics) downloadFile('hausbau-' + slug(f.title) + '.ics', ics, 'text/calendar');
       toast('Kalenderdatei gespeichert – antippen, um sie im Kalender zu öffnen.');
     });
@@ -926,7 +1128,8 @@
       if (wasDone) { setDone(t.id, false); toast('Wieder offen.'); } else completeTodo(t.id);
     });
     $('#tDelete').addEventListener('click', deleteTodo);
-    $('#nDelete').addEventListener('click', function () { deleteNote(false); });
+    $('#cDelete').addEventListener('click', deleteContact);
+    $('#phaseAdd').addEventListener('click', addPhase);
 
     $('#toastAction').addEventListener('click', function () {
       var fn = toastHandler;
@@ -1038,6 +1241,7 @@
     checkReminders();
     scheduleNext();
     registerSW();
+    if (migratedNotes) toast('Deine ' + (migratedNotes === 1 ? 'Notiz steht' : migratedNotes + ' Notizen stehen') + ' jetzt unter „Personen“.');
     var m = /[?&]todo=([^&]+)/.exec(location.search);
     if (m && findTodo(decodeURIComponent(m[1]))) openTodo(decodeURIComponent(m[1]));
   }
@@ -1046,5 +1250,5 @@
   else init();
 
   // Für Tests
-  window.__app = { state: state, moveTodo: moveTodo, checkReminders: checkReminders, openTodo: openTodo };
+  window.__app = { state: state, moveTodo: moveTodo, checkReminders: checkReminders, openTodo: openTodo, openContact: openContact };
 })();

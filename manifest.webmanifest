@@ -1,7 +1,7 @@
 {
   "name": "Hausbau",
   "short_name": "Hausbau",
-  "description": "Hausbau-Planer: To-dos, Notizen und Erinnerungen. Alle Daten bleiben lokal auf dem Gerät.",
+  "description": "Hausbau-Planer: To-dos, Personen und Erinnerungen. Alle Daten bleiben lokal auf dem Gerät.",
   "lang": "de",
   "dir": "ltr",
   "id": "./",

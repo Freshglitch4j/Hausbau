@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hausbau</title>
-<meta name="description" content="Hausbau-Planer: To-dos, Notizen und Erinnerungen. Alle Daten bleiben auf diesem Gerät.">
+<meta name="description" content="Hausbau-Planer: To-dos, Personen und Erinnerungen. Alle Daten bleiben auf diesem Gerät.">
 <meta name="theme-color" content="#15181d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -53,20 +53,21 @@
     <p class="hint" id="sortHint" hidden>Am Griff <span aria-hidden="true">⠿</span> ziehen, um die Reihenfolge zu ändern. Oben steht immer, was als Nächstes dran ist.</p>
   </section>
 
-  <!-- ============================================================ NOTIZEN -->
-  <section id="view-notes" class="view" aria-label="Notizen">
+  <!-- ============================================================ PERSONEN -->
+  <section id="view-people" class="view" aria-label="Personen">
     <header class="topbar">
       <div>
-        <h1>Notizen</h1>
-        <div class="sub" id="noteSub">–</div>
+        <h1>Personen</h1>
+        <div class="sub" id="peopleSub">–</div>
       </div>
     </header>
-    <div id="noteList" class="note-list"></div>
-    <div id="noteEmpty" class="empty" hidden>
-      <p><strong>Noch keine Notizen.</strong></p>
-      <p>Ideen, Telefonnummern, Fragen an den Architekten – alles, was du nicht vergessen willst.</p>
-      <button class="btn btn-primary" type="button" data-action="new-note">Erste Notiz schreiben</button>
+    <div id="contactList" class="todo-list contact-list" aria-label="Personen"></div>
+    <div id="peopleEmpty" class="empty" hidden>
+      <p><strong>Noch keine Personen.</strong></p>
+      <p>Architekt, Baufirma, Bankberaterin, Bauamt … Hier sammelst du alle, mit denen du beim Hausbau zu tun hast – mit Telefon, E-Mail und Notizen.</p>
+      <button class="btn btn-primary" type="button" data-action="new-contact">Erste Person anlegen</button>
     </div>
+    <p class="hint" id="peopleHint" hidden>Antippen zeigt die Details. Am Griff <span aria-hidden="true">⠿</span> ziehen, um die Reihenfolge zu ändern.</p>
   </section>
 
   <!-- ============================================================ MEHR -->
@@ -82,6 +83,16 @@
       <h2>App installieren</h2>
       <p class="note-small">Legt Hausbau als eigene App auf den Startbildschirm.</p>
       <button class="btn btn-primary" type="button" id="installBtn2">Jetzt installieren</button>
+    </div>
+
+    <div class="card">
+      <h2>Bereiche</h2>
+      <p class="note-small">Die Bereiche, nach denen du deine To-dos ordnest. Namen antippen zum Ändern,
+        Farbpunkt antippen für eine andere Farbe, am Griff <span aria-hidden="true">⠿</span> ziehen zum Umsortieren.</p>
+      <div id="phaseList" class="phase-list"></div>
+      <div class="btnrow">
+        <button class="btn" type="button" id="phaseAdd">+ Bereich hinzufügen</button>
+      </div>
     </div>
 
     <div class="card">
@@ -145,9 +156,9 @@
     <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.2 1.2L6.8 5M3.5 12l1.2 1.2 2.1-2.2M3.5 18l1.2 1.2 2.1-2.2"/></svg>
     <span>To-dos</span>
   </button>
-  <button type="button" class="tab" data-view="notes">
-    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg>
-    <span>Notizen</span>
+  <button type="button" class="tab" data-view="people">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M15.5 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c1.8.8 3 2.6 3.5 5.2"/></svg>
+    <span>Personen</span>
   </button>
   <button type="button" class="tab" data-view="more">
     <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>
@@ -177,6 +188,7 @@
       <div class="field">
         <span class="lbl">Bereich</span>
         <div class="chips chips-wrap" id="tPhase" role="radiogroup" aria-label="Bereich"></div>
+        <p class="note-small" id="tPhaseNone" hidden>Noch keine Bereiche angelegt – das geht unter <strong>Mehr → Bereiche</strong>.</p>
       </div>
 
       <div class="field" id="tPosField">
@@ -224,26 +236,48 @@
   </form>
 </dialog>
 
-<!-- Notiz bearbeiten -->
-<dialog id="noteDlg" class="sheet" aria-labelledby="noteDlgTitle">
-  <form method="dialog" id="noteForm" novalidate>
+<!-- Person bearbeiten -->
+<dialog id="contactDlg" class="sheet" aria-labelledby="contactDlgTitle">
+  <form method="dialog" id="contactForm" novalidate>
     <div class="sheet-head">
       <button type="button" class="linkbtn" data-close>Abbrechen</button>
-      <h2 id="noteDlgTitle">Neue Notiz</h2>
+      <h2 id="contactDlgTitle">Neue Person</h2>
       <button type="submit" class="linkbtn linkbtn-strong">Speichern</button>
     </div>
     <div class="sheet-body">
       <label class="field">
-        <span class="lbl">Titel</span>
-        <input type="text" id="nTitle" maxlength="200" autocomplete="off" placeholder="optional">
+        <span class="lbl">Funktion</span>
+        <input type="text" id="cRole" maxlength="80" autocomplete="off" list="roleList" enterkeyhint="next" placeholder="z. B. Architekt">
+      </label>
+      <datalist id="roleList">
+        <option value="Architekt"></option>
+        <option value="Baumeister"></option>
+        <option value="Baufirma"></option>
+        <option value="Bauleiter"></option>
+        <option value="Statiker"></option>
+        <option value="Bankberater"></option>
+        <option value="Notar"></option>
+        <option value="Bauamt / Gemeinde"></option>
+        <option value="Vermesser"></option>
+        <option value="Elektriker"></option>
+        <option value="Installateur"></option>
+        <option value="Dachdecker"></option>
+        <option value="Fliesenleger"></option>
+        <option value="Tischler"></option>
+        <option value="Energieberater"></option>
+        <option value="Versicherung"></option>
+      </datalist>
+      <label class="field">
+        <span class="lbl">Name</span>
+        <input type="text" id="cName" maxlength="120" autocomplete="off" enterkeyhint="next" placeholder="z. B. Alois Huber">
       </label>
       <label class="field">
-        <span class="lbl">Notiz</span>
-        <textarea id="nText" rows="10" placeholder="Schreib einfach los …"></textarea>
+        <span class="lbl">Beschreibung</span>
+        <textarea id="cInfo" rows="6" placeholder="Telefon, E-Mail, Adresse, Firma, Notizen zur Person …"></textarea>
       </label>
-      <p class="note-small" id="nMeta"></p>
-      <div class="btnrow" id="nEditOnly">
-        <button type="button" class="btn btn-danger" id="nDelete">Notiz löschen</button>
+      <p class="note-small">Telefonnummern, E-Mail-Adressen und Internetadressen werden in der Liste automatisch antippbar.</p>
+      <div class="btnrow" id="cEditOnly">
+        <button type="button" class="btn btn-danger" id="cDelete">Person löschen</button>
       </div>
     </div>
   </form>

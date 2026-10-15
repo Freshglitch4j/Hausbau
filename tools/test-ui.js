@@ -150,21 +150,75 @@ async function drag(page, from, to) {
   await page.waitForTimeout(100);
   ok(await page.isVisible('.reminder'), 'Erinnerung erscheint zur Zeit');
 
-  // Notiz
-  await page.click('.tab[data-view="notes"]');
-  ok(await page.isVisible('#noteEmpty'), 'Notizen leer');
+  // Personen
+  await page.click('.tab[data-view="people"]');
+  ok(await page.isVisible('#peopleEmpty'), 'Personen leer');
   await page.click('#fab');
-  await page.fill('#nText', 'Fragen an den Architekten\nWie hoch sind die Nebenkosten?\nWärmepumpe oder Gas?');
-  await page.click('#noteForm button[type="submit"]');
-  ok((await page.textContent('.note-title')) === 'Fragen an den Architekten', 'Notiz gespeichert');
-  await shot(page, '04-notizen');
+  await page.fill('#cRole', 'Architekt');
+  await page.fill('#cName', 'Alois Huber');
+  await page.fill('#cInfo', 'Tel. 0664 123 45 67\nalois@huber-arch.at\nBüro: Hauptstraße 5\nMag es kurz und knapp.');
+  await page.click('#contactForm button[type="submit"]');
+  await page.click('#fab');
+  await page.fill('#cRole', 'Bankberaterin');
+  await page.fill('#cName', 'Maria Gruber');
+  await page.click('#contactForm button[type="submit"]');
+  const people = () => page.$$eval('#contactList .todo-title', (els) => els.map((e) => e.textContent));
+  ok(JSON.stringify(await people()) === JSON.stringify(['Alois Huber', 'Maria Gruber']), 'Personen angelegt', (await people()).join(' | '));
+  ok((await page.textContent('#contactList .contact-role')) === 'Architekt', 'Funktion sichtbar');
+  ok(!(await page.isVisible('#contactList .todo-desc')), 'Beschreibung zugeklappt verborgen');
+  await page.click('#contactList .todo-row:first-child .todo-head');
+  ok(await page.isVisible('#contactList .todo-row:first-child .todo-desc'), 'Antippen zeigt Beschreibung');
+  ok((await page.getAttribute('#contactList .todo-desc a[href^="tel:"]', 'href')) === 'tel:06641234567', 'Telefon antippbar');
+  ok((await page.getAttribute('#contactList .todo-desc a[href^="mailto:"]', 'href')) === 'mailto:alois@huber-arch.at', 'E-Mail antippbar');
+  ok(await page.isVisible('#contactList .detail-actions a:has-text("Anrufen")'), 'Anrufen-Knopf');
+  await page.waitForTimeout(300);
+  await shot(page, '04-personen');
+  // Umsortieren
+  await page.click('#contactList .todo-row:first-child .todo-head');
+  const cg = await page.$$('#contactList .grip');
+  const ca = await cg[1].boundingBox();
+  const cb = await (await page.$('#contactList .todo-row:first-child')).boundingBox();
+  await page.mouse.move(ca.x + ca.width / 2, ca.y + ca.height / 2);
+  await page.mouse.down();
+  for (let i = 1; i <= 10; i++) await page.mouse.move(ca.x + ca.width / 2, ca.y + ca.height / 2 + (cb.y + 5 - ca.y - ca.height / 2) * i / 10);
+  await page.mouse.up();
+  ok((await people())[0] === 'Maria Gruber', 'Personen umsortieren');
 
   // Abbrechen mit Änderungen fragt nach (Dialog wird automatisch bestätigt)
-  await page.click('.note-card');
-  await page.fill('#nText', 'geändert');
-  await page.click('#noteDlg [data-close]');
-  ok(!(await page.isVisible('#noteDlg')), 'Abbrechen schließt Dialog');
-  ok((await page.textContent('.note-title')) === 'Fragen an den Architekten', 'Abbrechen verwirft Änderung');
+  await page.click('#contactList .todo-row:first-child .todo-head');
+  await page.click('#contactList .todo-row:first-child .detail-actions .pill:has-text("Bearbeiten")');
+  await page.fill('#cName', 'geändert');
+  await page.click('#contactDlg [data-close]');
+  ok(!(await page.isVisible('#contactDlg')), 'Abbrechen schließt Dialog');
+  ok((await people())[0] === 'Maria Gruber', 'Abbrechen verwirft Änderung');
+
+  // Bereiche selbst festlegen
+  await page.click('.tab[data-view="more"]');
+  const phaseNames = () => page.$$eval('#phaseList .phase-input', (els) => els.map((e) => e.value));
+  ok((await phaseNames()).length === 6, 'Vorgabe-Bereiche');
+  await page.fill('#phaseList .phase-row:nth-child(4) .phase-input', 'Rohbau');
+  await page.press('#phaseList .phase-row:nth-child(4) .phase-input', 'Enter');
+  await page.click('#phaseAdd');
+  await page.keyboard.type('Garten');
+  await page.keyboard.press('Enter');
+  ok((await phaseNames()).slice(-1)[0] === 'Garten', 'Bereich hinzugefügt');
+  await page.click('#phaseList .phase-row:nth-child(3) .phase-del');  // Behörden (hat To-dos)
+  ok(!(await phaseNames()).includes('Behörden'), 'Bereich gelöscht');
+  await page.click('#phaseList .phase-row:first-child .color-dot');
+  await shot(page, '05b-bereiche');
+  await page.click('.tab[data-view="todos"]');
+  const chipNames = await page.$$eval('#phaseChips .chip', (els) => els.map((e) => e.firstChild.textContent));
+  ok(chipNames.includes('Rohbau') && chipNames.includes('Garten') && !chipNames.includes('Bau'), 'Filter-Chips folgen den Bereichen', chipNames.join(','));
+  ok(chipNames.includes('Ohne Bereich'), 'Chip „Ohne Bereich“ für To-dos des gelöschten Bereichs');
+  await page.click('#phaseChips .chip:has-text("Ohne Bereich")');
+  ok((await titles(page)).includes('Termin beim Notar'), 'To-do des gelöschten Bereichs bleibt erhalten');
+  await page.click('#phaseChips [data-phase="all"]');
+  await page.click('#fab');
+  ok((await page.$$eval('#tPhase .chip', (els) => els.map((e) => e.textContent))).includes('Garten'), 'Editor zeigt eigene Bereiche');
+  await page.click('#tPhase .chip:has-text("Garten")');
+  await page.click('#tPhase .chip:has-text("Garten")');
+  ok(!(await page.$('#tPhase .chip.is-on')), 'Bereich abwählbar');
+  await page.click('#todoDlg [data-close]');
 
   // Mehr / hell
   await page.click('.tab[data-view="more"]');
@@ -194,6 +248,21 @@ async function drag(page, from, to) {
   ok(await page.evaluate(() => window.__prompted === true), 'Installieren ruft Chrome-Dialog auf');
   await page.waitForTimeout(50);
   ok(!(await page.isVisible('#installBar')), 'Leiste nach dem Installieren weg');
+
+  // Umzug: Notizen aus Version 1.2 landen bei den Personen
+  const page2 = await ctx.newPage();
+  page2.on('pageerror', (e) => errors.push(e.message));
+  await page2.addInitScript(() => {
+    if (!localStorage.getItem('seeded')) {
+      localStorage.clear();
+      localStorage.setItem('seeded', '1');
+      localStorage.setItem('hausbau.notes.v1', JSON.stringify([{ id: 'n1', title: '', text: 'Fragen an den Architekten\nWärmepumpe?', createdAt: '2026-10-10T10:00:00Z' }]));
+    }
+  });
+  await page2.goto(url);
+  await page2.click('.tab[data-view="people"]');
+  ok((await page2.textContent('#contactList .todo-title')) === 'Fragen an den Architekten', 'alte Notiz übernommen');
+  ok(await page2.evaluate(() => localStorage.getItem('hausbau.notes.v1') === null), 'alte Notizen aufgeräumt');
 
   ok(!errors.length, 'keine JS-Fehler', errors.join(' / '));
   await browser.close();

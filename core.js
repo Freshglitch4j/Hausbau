@@ -11,22 +11,52 @@
 
   /* ------------------------------------------------------------ Bereiche */
 
-  var PHASES = [
-    { id: 'planung', label: 'Planung' },
-    { id: 'finanzen', label: 'Finanzierung' },
-    { id: 'behoerden', label: 'Behörden' },
-    { id: 'bau', label: 'Bau' },
-    { id: 'ausbau', label: 'Ausbau' },
-    { id: 'sonstiges', label: 'Sonstiges' }
+  // Vorgabe – in den Einstellungen frei änderbar. color: 1–8 (Farbpalette im CSS)
+  var COLORS = 8;
+  var DEFAULT_PHASES = [
+    { id: 'planung', label: 'Planung', color: 1 },
+    { id: 'finanzen', label: 'Finanzierung', color: 2 },
+    { id: 'behoerden', label: 'Behörden', color: 3 },
+    { id: 'bau', label: 'Bau', color: 4 },
+    { id: 'ausbau', label: 'Ausbau', color: 5 },
+    { id: 'sonstiges', label: 'Sonstiges', color: 6 }
   ];
 
-  function phaseLabel(id) {
-    for (var i = 0; i < PHASES.length; i++) if (PHASES[i].id === id) return PHASES[i].label;
-    return 'Sonstiges';
+  function defaultPhases() {
+    return DEFAULT_PHASES.map(function (p) { return { id: p.id, label: p.label, color: p.color }; });
   }
 
-  function isPhase(id) {
-    return PHASES.some(function (p) { return p.id === id; });
+  function findPhase(phases, id) {
+    for (var i = 0; i < (phases || []).length; i++) if (phases[i].id === id) return phases[i];
+    return null;
+  }
+
+  function phaseLabel(id, phases) {
+    var p = findPhase(phases || DEFAULT_PHASES, id);
+    return p ? p.label : '';
+  }
+
+  // Liste aus dem Speicher prüfen; Unbrauchbares fällt weg
+  function normalizePhases(list) {
+    if (!Array.isArray(list)) return defaultPhases();
+    var seen = {};
+    return list.map(function (p) {
+      if (!p || typeof p !== 'object') return null;
+      var label = str(p.label, 40).trim();
+      var id = str(p.id, 40);
+      if (!label || !id || seen[id]) return null;
+      seen[id] = true;
+      var color = Math.round(+p.color);
+      return { id: id, label: label, color: color >= 1 && color <= COLORS ? color : 6 };
+    }).filter(Boolean);
+  }
+
+  // Erste noch freie Farbe, sonst reihum
+  function nextColor(phases) {
+    var used = {};
+    phases.forEach(function (p) { used[p.color] = true; });
+    for (var c = 1; c <= COLORS; c++) if (!used[c]) return c;
+    return (phases.length % COLORS) + 1;
   }
 
   /* ---------------------------------------------------------------- Zeit */
@@ -173,10 +203,10 @@
 
   function compact(local) { return local.replace(/[-:]/g, ''); }
 
-  function calText(todo) {
+  function calText(todo, bereich) {
     var parts = [];
     if (todo.note) parts.push(todo.note);
-    parts.push('Bereich: ' + phaseLabel(todo.phase));
+    if (bereich) parts.push('Bereich: ' + bereich);
     parts.push('– aus der Hausbau-App');
     return parts.join('\n\n');
   }
@@ -196,20 +226,20 @@
     return null;
   }
 
-  function gcalUrl(todo) {
+  function gcalUrl(todo, bereich) {
     var slot = calSlot(todo);
     if (!slot) return null;
     return 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
       '&text=' + encodeURIComponent('Hausbau: ' + todo.title) +
       '&dates=' + slot.start + '/' + slot.end +
-      '&details=' + encodeURIComponent(calText(todo));
+      '&details=' + encodeURIComponent(calText(todo, bereich));
   }
 
   function icsEscape(s) {
     return String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
   }
 
-  function icsText(todo, now) {
+  function icsText(todo, now, bereich) {
     var slot = calSlot(todo);
     if (!slot) return null;
     now = now || new Date();
@@ -222,7 +252,7 @@
       slot.allDay ? 'DTSTART;VALUE=DATE:' + slot.start : 'DTSTART:' + slot.start,
       slot.allDay ? 'DTEND;VALUE=DATE:' + slot.end : 'DTEND:' + slot.end,
       'SUMMARY:' + icsEscape('Hausbau: ' + todo.title),
-      'DESCRIPTION:' + icsEscape(calText(todo)),
+      'DESCRIPTION:' + icsEscape(calText(todo, bereich)),
       'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsEscape(todo.title),
       // Ganztägig: Vortag 18 Uhr ; mit Uhrzeit: genau zum Termin
       slot.allDay ? 'TRIGGER:-PT6H' : 'TRIGGER:PT0M',
@@ -245,7 +275,7 @@
     return {
       id: str(o.id, 40) || uid(),
       title: title,
-      phase: isPhase(o.phase) ? o.phase : 'sonstiges',
+      phase: str(o.phase, 40),
       note: str(o.note, 20000),
       due: parseDate(o.due) ? o.due : '',
       remindAt: parseLocal(o.remindAt) ? o.remindAt.slice(0, 16) : '',
@@ -272,6 +302,65 @@
     };
   }
 
+  // Person: Funktion (z. B. Architekt) + Name + freie Beschreibung
+  function normalizeContact(o) {
+    if (!o || typeof o !== 'object') return null;
+    var role = str(o.role, 80).trim();
+    var name = str(o.name, 120).trim();
+    if (!role && !name) return null;
+    var created = typeof o.createdAt === 'string' ? o.createdAt : new Date().toISOString();
+    return {
+      id: str(o.id, 40) || uid(),
+      role: role,
+      name: name,
+      info: str(o.info, 20000),
+      createdAt: created,
+      updatedAt: typeof o.updatedAt === 'string' ? o.updatedAt : created
+    };
+  }
+
+  // Alte Notizen (bis Version 1.2) werden zu Einträgen bei den Personen
+  function noteToContact(n) {
+    n = normalizeNote(n);
+    if (!n) return null;
+    var lines = n.text.split('\n');
+    var name = n.title;
+    if (!name) {
+      while (lines.length && !lines[0].trim()) lines.shift();
+      name = (lines.shift() || '').trim();
+    }
+    return normalizeContact({ id: n.id, role: 'Notiz', name: name.slice(0, 120), info: lines.join('\n').trim(), createdAt: n.createdAt, updatedAt: n.updatedAt });
+  }
+
+  // Zerlegt Text in Stücke; E-Mail, Telefon und Links werden antippbar
+  var LINK_RE = /([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})|((?:https?:\/\/|www\.)[^\s<>"]+)|((?:\+|0)[\d][\d \/()-]{4,}\d)/g;
+
+  function linkify(text) {
+    var out = [];
+    var last = 0;
+    var m;
+    LINK_RE.lastIndex = 0;
+    while ((m = LINK_RE.exec(text))) {
+      var raw = m[0];
+      var seg = null;
+      if (m[1]) seg = { type: 'mail', text: raw, href: 'mailto:' + raw };
+      else if (m[2]) {
+        raw = raw.replace(/[.,;:!?)]+$/, '');
+        seg = { type: 'url', text: raw, href: /^www\./.test(raw) ? 'https://' + raw : raw };
+      } else {
+        var digits = raw.replace(/\D/g, '');
+        if (digits.length >= 6) seg = { type: 'tel', text: raw, href: 'tel:' + (raw.trim()[0] === '+' ? '+' : '') + digits };
+      }
+      if (!seg) continue;
+      if (m.index > last) out.push({ type: 'text', text: text.slice(last, m.index) });
+      out.push(seg);
+      last = m.index + raw.length;
+      LINK_RE.lastIndex = last;
+    }
+    if (last < text.length) out.push({ type: 'text', text: text.slice(last) });
+    return out;
+  }
+
   function normalizeList(list, fn) {
     var seen = {};
     return (Array.isArray(list) ? list : []).map(fn).filter(function (x) {
@@ -282,13 +371,14 @@
     });
   }
 
-  function makeBackup(todos, notes, now) {
+  function makeBackup(todos, contacts, phases, now) {
     return {
       app: 'hausbau',
-      format: 1,
+      format: 2,
       exportedAt: (now || new Date()).toISOString(),
       todos: todos,
-      notes: notes
+      contacts: contacts,
+      phases: phases
     };
   }
 
@@ -297,9 +387,12 @@
     var data;
     try { data = JSON.parse(text); } catch (e) { throw new Error('Die Datei ist keine gültige Sicherung (kein JSON).'); }
     if (!data || data.app !== 'hausbau') throw new Error('Die Datei stammt nicht aus der Hausbau-App.');
+    var contacts = normalizeList(data.contacts, normalizeContact)
+      .concat(normalizeList(data.notes, noteToContact));
     return {
       todos: normalizeList(data.todos, normalizeTodo),
-      notes: normalizeList(data.notes, normalizeNote)
+      contacts: normalizeList(contacts, function (c) { return c; }),
+      phases: Array.isArray(data.phases) ? normalizePhases(data.phases) : null
     };
   }
 
@@ -327,21 +420,25 @@
     ['bau', 'Endabnahme mit Mängelprotokoll', '']
   ];
 
-  function sampleTodos(now) {
+  // Bereiche, die es (nach eigenen Änderungen) nicht mehr gibt, bleiben leer
+  function sampleTodos(now, phases) {
     var created = (now || new Date()).toISOString();
     return SAMPLE.map(function (s, i) {
-      return normalizeTodo({ id: 'v' + i + '-' + uid(), phase: s[0], title: s[1], note: s[2], createdAt: created });
+      var phase = !phases || findPhase(phases, s[0]) ? s[0] : '';
+      return normalizeTodo({ id: 'v' + i + '-' + uid(), phase: phase, title: s[1], note: s[2], createdAt: created });
     });
   }
 
   return {
-    PHASES: PHASES, phaseLabel: phaseLabel, isPhase: isPhase,
+    COLORS: COLORS, defaultPhases: defaultPhases, findPhase: findPhase, phaseLabel: phaseLabel,
+    normalizePhases: normalizePhases, nextColor: nextColor,
     uid: uid, pad: pad, isoDate: isoDate, isoLocal: isoLocal, parseDate: parseDate, parseLocal: parseLocal,
     fmtDate: fmtDate, fmtDateTime: fmtDateTime, daysUntil: daysUntil, relDays: relDays, dueState: dueState,
     moveWithin: moveWithin, orderBy: orderBy,
     dueReminders: dueReminders, nextReminder: nextReminder, snooze: snooze,
     gcalUrl: gcalUrl, icsText: icsText,
-    normalizeTodo: normalizeTodo, normalizeNote: normalizeNote,
+    normalizeTodo: normalizeTodo, normalizeNote: normalizeNote, normalizeContact: normalizeContact,
+    noteToContact: noteToContact, linkify: linkify,
     makeBackup: makeBackup, parseBackup: parseBackup,
     sampleTodos: sampleTodos
   };

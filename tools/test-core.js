@@ -55,15 +55,39 @@ eq(ics.includes('BEGIN:VALARM'), true, 'ICS: Alarm');
 // Daten
 eq(C.normalizeTodo({ title: '  ' }), null, 'leerer Titel wird verworfen');
 const n = C.normalizeTodo({ title: 'X', phase: 'quatsch', due: 'morgen', remindAt: '2026-10-14T09:00:00' });
-eq([n.phase, n.due, n.remindAt, n.done], ['sonstiges', '', '2026-10-14T09:00', false], 'normalizeTodo');
-const backup = JSON.stringify(C.makeBackup([{ id: 'a', title: 'T' }, { id: 'a', title: 'U' }], [{ text: 'hi' }, { text: '' }], now));
+eq([n.phase, n.due, n.remindAt, n.done], ['quatsch', '', '2026-10-14T09:00', false], 'normalizeTodo');
+const backup = JSON.stringify(C.makeBackup([{ id: 'a', title: 'T' }, { id: 'a', title: 'U' }],
+  [{ role: 'Architekt', name: 'Alois Huber' }, { role: '', name: '' }], [{ id: 'x', label: 'Keller', color: 3 }], now));
 const back = C.parseBackup(backup);
-eq([back.todos.length, back.notes.length], [2, 1], 'Sicherung: leere Notiz fällt weg');
+eq([back.todos.length, back.contacts.length], [2, 1], 'Sicherung: leere Person fällt weg');
+eq(back.phases, [{ id: 'x', label: 'Keller', color: 3 }], 'Sicherung: eigene Bereiche');
+const old = C.parseBackup(JSON.stringify({ app: 'hausbau', format: 1, todos: [], notes: [{ title: '', text: 'Fragen\nWärmepumpe?' }] }));
+eq([old.contacts[0].role, old.contacts[0].name, old.contacts[0].info, old.phases], ['Notiz', 'Fragen', 'Wärmepumpe?', null], 'alte Sicherung: Notizen werden Personen-Einträge');
 eq(back.todos[0].id !== back.todos[1].id, true, 'Sicherung: doppelte IDs werden aufgelöst');
 let err = '';
 try { C.parseBackup('{"app":"andere"}'); } catch (e) { err = e.message; }
 eq(err, 'Die Datei stammt nicht aus der Hausbau-App.', 'fremde Datei');
 eq(C.sampleTodos(now).length >= 15, true, 'Vorlage');
+eq(C.sampleTodos(now, [{ id: 'bau', label: 'Bau', color: 4 }]).filter((t) => t.phase).every((t) => t.phase === 'bau'), true, 'Vorlage: gelöschte Bereiche bleiben leer');
+
+// Bereiche
+eq(C.normalizePhases('kaputt').length, 6, 'Bereiche: Vorgabe bei Unsinn');
+eq(C.normalizePhases([{ id: 'a', label: ' A ', color: 99 }, { id: 'a', label: 'doppelt' }, { id: 'b', label: '' }]), [{ id: 'a', label: 'A', color: 6 }], 'Bereiche prüfen');
+eq(C.nextColor([{ color: 1 }, { color: 2 }]), 3, 'nächste freie Farbe');
+eq(C.phaseLabel('x', [{ id: 'x', label: 'Keller' }]), 'Keller', 'eigener Bereichsname');
+eq(C.phaseLabel('weg', []), '', 'gelöschter Bereich ohne Namen');
+
+// Personen
+eq(C.normalizeContact({ role: ' Architekt ', name: 'Alois Huber' }).role, 'Architekt', 'Person');
+eq(C.normalizeContact({ role: '', name: ' ' }), null, 'leere Person');
+
+// Links in Beschreibungen
+const segs = C.linkify('Tel. 0664 123 45 67, Mail alois.huber@arch.at, Web www.huber-architektur.at. Termin 14.10.2026 um 9');
+const kinds = segs.filter((s) => s.type !== 'text').map((s) => s.type + ':' + s.href);
+eq(kinds, ['tel:tel:06641234567', 'mail:mailto:alois.huber@arch.at', 'url:https://www.huber-architektur.at'], 'Links erkennen');
+eq(segs.map((s) => s.text).join(''), 'Tel. 0664 123 45 67, Mail alois.huber@arch.at, Web www.huber-architektur.at. Termin 14.10.2026 um 9', 'Text bleibt vollständig');
+eq(C.linkify('+43 1 234 5678').map((s) => s.href), ['tel:+4312345678'], 'internationale Nummer');
+eq(C.linkify('PLZ 0123').map((s) => s.type), ['text'], 'zu kurze Zahl ist kein Telefon');
 
 console.log(fail ? '\n' + fail + ' Fehler, ' + pass + ' ok' : 'Alle ' + pass + ' Tests ok');
 process.exit(fail ? 1 : 0);
