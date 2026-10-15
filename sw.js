@@ -1,7 +1,9 @@
 /* Service Worker – macht die App vollständig offline nutzbar.
-   Bei jeder Code-Änderung die Versionsnummer erhöhen, dann holt sich
-   das Handy beim nächsten Start automatisch die neuen Dateien. */
-const VERSION = 'hausbau-v4';
+   Bei jeder Code-Änderung VERSION erhöhen UND in index.html dieselbe Zahl bei
+   ?v= eintragen (styles.css, core.js, app.js). Die Versionsnummer in der
+   Adresse sorgt dafür, dass nie eine alte app.js zu einer neuen Seite geladen
+   wird – auch nicht von einem noch laufenden alten Service Worker. */
+const VERSION = 'hausbau-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -14,6 +16,7 @@ const ASSETS = [
   './icon-maskable-192.png',
   './icon-maskable-512.png'
 ];
+const NET_TIMEOUT = 4000;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -34,41 +37,39 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Erst das Netz (immer aktuell, alle Dateien aus demselben Stand), bei
+// fehlendem oder sehr langsamem Netz der Zwischenspeicher (offline).
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // Seitenaufrufe: erst Netz (für Updates), sonst Cache
-  if (req.mode === 'navigate') {
-    event.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(VERSION).then((c) => c.put('./index.html', copy));
-          return res;
-        })
-        .catch(() => caches.match('./index.html').then((r) => r || caches.match('./')))
-    );
-    return;
-  }
+  const fromCache = () => (req.mode === 'navigate'
+    ? caches.match('./index.html').then((r) => r || caches.match('./'))
+    : caches.match(req, { ignoreSearch: true }));
 
-  // Alles andere: erst Cache (schnell und offline), im Hintergrund auffrischen
-  event.respondWith(
-    caches.match(req).then((cached) => {
-      const network = fetch(req)
-        .then((res) => {
-          if (res && res.status === 200) {
-            const copy = res.clone();
-            caches.open(VERSION).then((c) => c.put(req, copy));
-          }
-          return res;
-        })
-        .catch(() => cached);
-      return cached || network;
-    })
-  );
+  event.respondWith(new Promise((resolve) => {
+    let done = false;
+    const finish = (res) => { if (!done && res) { done = true; resolve(res); } };
+    const timer = setTimeout(() => fromCache().then(finish), NET_TIMEOUT);
+    fetch(req, { cache: 'no-cache' })
+      .then((res) => {
+        clearTimeout(timer);
+        if (res && res.status === 200) {
+          const copy = res.clone();
+          const key = req.mode === 'navigate' ? './index.html' : url.pathname.replace(/^.*\//, './');
+          caches.open(VERSION).then((c) => c.put(key, copy));
+        }
+        if (done) return;
+        if (res && res.ok) finish(res);
+        else fromCache().then((c) => { if (!done) { done = true; resolve(c || res); } });
+      })
+      .catch(() => {
+        clearTimeout(timer);
+        fromCache().then((c) => { if (!done) { done = true; resolve(c || Response.error()); } });
+      });
+  }));
 });
 
 // Tippen auf eine Erinnerung: App nach vorne holen und das To-do öffnen

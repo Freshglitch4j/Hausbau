@@ -124,5 +124,7 @@ sw.js (Offline)  manifest.webmanifest  icon-*.png
 - Oberflächen-Tests im Chromium: `NODE_PATH=$(npm root -g) node tools/test-ui.js`
   (braucht Playwright)
 - Icons neu erzeugen: `python3 tools/make-icons.py` (braucht Pillow)
-- Bei jeder Änderung in `sw.js` die `VERSION` erhöhen, damit das Handy die
-  neuen Dateien lädt.
+- Bei jeder Änderung `VERSION` in `sw.js` erhöhen **und** dieselbe Zahl in
+  `index.html` bei `styles.css?v=`, `core.js?v=` und `app.js?v=` eintragen.
+  So lädt das Handy nie eine alte `app.js` zu einer neuen Seite
+  (`tools/test-core.js` prüft das).

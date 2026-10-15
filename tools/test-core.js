@@ -89,5 +89,15 @@ eq(segs.map((s) => s.text).join(''), 'Tel. 0664 123 45 67, Mail alois.huber@arch
 eq(C.linkify('+43 1 234 5678').map((s) => s.href), ['tel:+4312345678'], 'internationale Nummer');
 eq(C.linkify('PLZ 0123').map((s) => s.type), ['text'], 'zu kurze Zahl ist kein Telefon');
 
+// Update-Sicherheit: index.html lädt alle eigenen Dateien mit ?v=<Service-Worker-Version>
+const fs = require('fs');
+const path = require('path');
+const root = path.join(__dirname, '..');
+const swVersion = /const VERSION = 'hausbau-v(\d+)'/.exec(fs.readFileSync(path.join(root, 'sw.js'), 'utf8'))[1];
+const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+['styles.css', 'core.js', 'app.js'].forEach((f) => {
+  eq(html.includes(f + '?v=' + swVersion + '"'), true, f + ' in index.html mit ?v=' + swVersion + ' (wie sw.js)');
+});
+
 console.log(fail ? '\n' + fail + ' Fehler, ' + pass + ' ok' : 'Alle ' + pass + ' Tests ok');
 process.exit(fail ? 1 : 0);
