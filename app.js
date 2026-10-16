@@ -6,7 +6,7 @@
   'use strict';
 
   var C = window.HausCore;
-  var APP_VERSION = '1.4';
+  var APP_VERSION = '1.5';
   var KEY_TODOS = 'hausbau.todos.v1';
   var KEY_CONTACTS = 'hausbau.contacts.v1';
   var KEY_NOTES = 'hausbau.notes.v1';      // bis 1.2 – wird zu Personen übernommen
@@ -103,6 +103,8 @@
 
     var contacts = load(KEY_CONTACTS, null);
     state.contacts = (contacts || []).map(C.normalizeContact).filter(Boolean);
+    // Einträge aus 1.3/1.4 (Funktion + Name) einmalig als Titel speichern
+    if ((contacts || []).some(function (c) { return c && !c.title; })) saveContacts();
     // Einmalig: Notizen aus Version 1.2 bei den Personen übernehmen
     var notes = load(KEY_NOTES, null);
     if (Array.isArray(notes) && notes.length) {
@@ -199,10 +201,9 @@
     var empty = $('#todoEmpty');
     empty.textContent = '';
     if (!state.todos.length) {
-      empty.appendChild(el('p', null, [el('strong', { text: 'Willkommen bei deinem Hausbau-Planer.' })]));
-      empty.appendChild(el('p', { text: 'Hier stehen deine nächsten Schritte – das Wichtigste immer ganz oben. Leg selbst los oder starte mit einer Liste typischer Hausbau-Schritte.' }));
+      empty.appendChild(el('p', { text: 'Noch keine To-dos.' }));
       empty.appendChild(el('div', { class: 'btnrow btnrow-center' }, [
-        el('button', { class: 'btn btn-primary', type: 'button', text: 'Erstes To-do anlegen', onclick: function () { openTodo(null); } }),
+        el('button', { class: 'btn btn-primary', type: 'button', text: 'To-do anlegen', onclick: function () { openTodo(null); } }),
         el('button', { class: 'btn', type: 'button', text: 'Typische Schritte laden', onclick: addSamples })
       ]));
       empty.hidden = false;
@@ -318,7 +319,6 @@
       }
     }, [
       el('span', { class: 'todo-title', text: t.title }),
-      t.note ? el('span', { class: 'has-desc', title: 'Hat eine Beschreibung' }, [icon('note')]) : null,
       el('span', { class: 'chev', 'aria-hidden': 'true' })
     ]);
     if (open) row.classList.add('is-open');
@@ -788,18 +788,15 @@
     var n = state.contacts.length;
     $('#peopleSub').textContent = n === 1 ? '1 Person' : n + ' Personen';
     $('#peopleEmpty').hidden = n > 0;
-    $('#peopleHint').hidden = n < 1;
     state.contacts.forEach(function (c, i) { list.appendChild(contactRow(c, i, n)); });
   }
-
-  function contactLabel(c) { return [c.role, c.name].filter(Boolean).join(' · '); }
 
   function contactRow(c, index, total) {
     var row = el('div', { class: 'todo-row contact-row' });
     row.dataset.id = c.id;
     row.appendChild(el('button', {
       class: 'grip', type: 'button',
-      'aria-label': '„' + contactLabel(c) + '“ verschieben, Platz ' + (index + 1) + ' von ' + total + '. Pfeiltasten oder ziehen.',
+      'aria-label': '„' + c.title + '“ verschieben, Platz ' + (index + 1) + ' von ' + total + '. Pfeiltasten oder ziehen.',
       onkeydown: function (ev) {
         if (ev.key === 'ArrowUp') { ev.preventDefault(); moveContact(index, index - 1, true); }
         if (ev.key === 'ArrowDown') { ev.preventDefault(); moveContact(index, index + 1, true); }
@@ -811,18 +808,14 @@
     var open = !!state.expanded[c.id];
     var detailId = 'detail-' + c.id;
     var segs = C.linkify(c.info || '');
-    var tel = segs.filter(function (s) { return s.type === 'tel'; })[0];
-    var mail = segs.filter(function (s) { return s.type === 'mail'; })[0];
     var detail = el('div', { class: 'todo-detail', id: detailId }, [
       c.info.trim()
         ? el('p', { class: 'todo-desc' }, segs.map(function (s) {
           return s.type === 'text' ? s.text
             : el('a', { href: s.href, target: s.type === 'url' ? '_blank' : null, rel: s.type === 'url' ? 'noopener' : null, text: s.text });
         }))
-        : el('p', { class: 'todo-desc is-empty', text: 'Noch keine Angaben.' }),
+        : null,
       el('div', { class: 'detail-actions' }, [
-        tel ? el('a', { class: 'pill', href: tel.href, text: 'Anrufen' }) : null,
-        mail ? el('a', { class: 'pill', href: mail.href, text: 'E-Mail' }) : null,
         el('button', { class: 'pill', type: 'button', text: 'Bearbeiten', onclick: function () { openContact(c.id); } })
       ])
     ]);
@@ -837,10 +830,7 @@
         this.setAttribute('aria-expanded', now ? 'true' : 'false');
       }
     }, [
-      el('span', { class: 'contact-title' }, [
-        c.role ? el('span', { class: 'contact-role', text: c.role }) : null,
-        el('span', { class: 'todo-title', text: c.name || c.role })
-      ]),
+      el('span', { class: 'todo-title', text: c.title }),
       el('span', { class: 'chev', 'aria-hidden': 'true' })
     ]);
     if (open) row.classList.add('is-open');
@@ -861,39 +851,37 @@
   }
 
   var contactSnapshot = '';
-  function contactFormValue() { return JSON.stringify([$('#cRole').value, $('#cName').value, $('#cInfo').value]); }
+  function contactFormValue() { return JSON.stringify([$('#cTitle').value, $('#cInfo').value]); }
 
   function openContact(id) {
     var c = id ? findContact(id) : null;
     state.editContact = c ? c.id : null;
     $('#contactDlgTitle').textContent = c ? 'Person' : 'Neue Person';
-    $('#cRole').value = c ? c.role : '';
-    $('#cName').value = c ? c.name : '';
+    $('#cTitle').value = c ? c.title : '';
     $('#cInfo').value = c ? c.info : '';
     $('#cEditOnly').hidden = !c;
     autosize($('#cInfo'));
     contactSnapshot = contactFormValue();
     showDialog($('#contactDlg'), function () { return contactFormValue() !== contactSnapshot; });
-    if (!c) setTimeout(function () { $('#cRole').focus(); }, 60);
+    if (!c) setTimeout(function () { $('#cTitle').focus(); }, 60);
   }
 
   function saveContactForm() {
-    var role = $('#cRole').value.trim();
-    var name = $('#cName').value.trim();
+    var title = $('#cTitle').value.trim();
     var info = $('#cInfo').value;
-    if (!role && !name) {
-      toast('Bitte Funktion oder Name eintragen.', { error: true });
-      $('#cRole').focus();
+    if (!title) {
+      toast('Bitte einen Titel eintragen.', { error: true });
+      $('#cTitle').focus();
       return;
     }
     var stamp = new Date().toISOString();
     var c = state.editContact ? findContact(state.editContact) : null;
     if (c) {
-      if (c.role !== role || c.name !== name || c.info !== info) {
-        c.role = role; c.name = name; c.info = info; c.updatedAt = stamp;
+      if (c.title !== title || c.info !== info) {
+        c.title = title; c.info = info; c.updatedAt = stamp;
       }
     } else {
-      c = C.normalizeContact({ role: role, name: name, info: info, createdAt: stamp, updatedAt: stamp });
+      c = C.normalizeContact({ title: title, info: info, createdAt: stamp, updatedAt: stamp });
       state.contacts.push(c);
     }
     if (!saveContacts()) return;
@@ -904,7 +892,7 @@
 
   function deleteContact() {
     var c = findContact(state.editContact);
-    if (!c || !confirm('„' + shorten(contactLabel(c), 60) + '“ löschen?')) return;
+    if (!c || !confirm('„' + shorten(c.title, 60) + '“ löschen?')) return;
     var pos = state.contacts.indexOf(c);
     state.contacts.splice(pos, 1);
     saveContacts();
@@ -928,7 +916,6 @@
     var list = phases();
     list.forEach(function (p, index) {
       var row = el('div', { class: 'phase-row' });
-      var used = state.todos.filter(function (t) { return t.phase === p.id; }).length;
       row.appendChild(el('button', {
         class: 'grip', type: 'button',
         'aria-label': 'Bereich „' + p.label + '“ verschieben. Pfeiltasten oder ziehen.',
@@ -957,7 +944,6 @@
           savePhases(true);
         }
       }));
-      row.appendChild(el('span', { class: 'phase-count', text: used ? String(used) : '' , title: used + ' To-dos' }));
       row.appendChild(el('button', {
         class: 'phase-del', type: 'button', text: '×', 'aria-label': 'Bereich „' + p.label + '“ löschen',
         onclick: function () { deletePhase(p); }
@@ -1021,9 +1007,9 @@
     var p = notifyPermission();
     var status = {
       granted: 'Benachrichtigungen sind erlaubt.',
-      denied: 'Benachrichtigungen sind blockiert. Freigeben: Android-Einstellungen → Apps → Hausbau (bzw. Chrome) → Benachrichtigungen.',
-      'default': 'Benachrichtigungen sind noch nicht erlaubt. Ohne sie siehst du Erinnerungen nur in der App.',
-      unsupported: 'Dieser Browser unterstützt keine Benachrichtigungen. Erinnerungen erscheinen in der App.'
+      denied: 'Benachrichtigungen sind blockiert (Android-Einstellungen → Apps → Hausbau).',
+      'default': 'Benachrichtigungen sind noch nicht erlaubt.',
+      unsupported: 'Erinnerungen erscheinen nur in der App.'
     }[p];
     $('#notifyStatus').textContent = status;
     $('#notifyBtn').hidden = p !== 'default';
@@ -1241,7 +1227,7 @@
     checkReminders();
     scheduleNext();
     registerSW();
-    if (migratedNotes) toast('Deine ' + (migratedNotes === 1 ? 'Notiz steht' : migratedNotes + ' Notizen stehen') + ' jetzt unter „Personen“.');
+    if (migratedNotes) toast('Deine Notizen stehen jetzt unter „Personen“.');
     var m = /[?&]todo=([^&]+)/.exec(location.search);
     if (m && findTodo(decodeURIComponent(m[1]))) openTodo(decodeURIComponent(m[1]));
   }

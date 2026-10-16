@@ -57,12 +57,12 @@ eq(C.normalizeTodo({ title: '  ' }), null, 'leerer Titel wird verworfen');
 const n = C.normalizeTodo({ title: 'X', phase: 'quatsch', due: 'morgen', remindAt: '2026-10-14T09:00:00' });
 eq([n.phase, n.due, n.remindAt, n.done], ['quatsch', '', '2026-10-14T09:00', false], 'normalizeTodo');
 const backup = JSON.stringify(C.makeBackup([{ id: 'a', title: 'T' }, { id: 'a', title: 'U' }],
-  [{ role: 'Architekt', name: 'Alois Huber' }, { role: '', name: '' }], [{ id: 'x', label: 'Keller', color: 3 }], now));
+  [{ title: 'Architekt – Alois Huber' }, { title: '' }], [{ id: 'x', label: 'Keller', color: 3 }], now));
 const back = C.parseBackup(backup);
 eq([back.todos.length, back.contacts.length], [2, 1], 'Sicherung: leere Person fällt weg');
 eq(back.phases, [{ id: 'x', label: 'Keller', color: 3 }], 'Sicherung: eigene Bereiche');
 const old = C.parseBackup(JSON.stringify({ app: 'hausbau', format: 1, todos: [], notes: [{ title: '', text: 'Fragen\nWärmepumpe?' }] }));
-eq([old.contacts[0].role, old.contacts[0].name, old.contacts[0].info, old.phases], ['Notiz', 'Fragen', 'Wärmepumpe?', null], 'alte Sicherung: Notizen werden Personen-Einträge');
+eq([old.contacts[0].title, old.contacts[0].info, old.phases], ['Fragen', 'Wärmepumpe?', null], 'alte Sicherung: Notizen werden Personen-Einträge');
 eq(back.todos[0].id !== back.todos[1].id, true, 'Sicherung: doppelte IDs werden aufgelöst');
 let err = '';
 try { C.parseBackup('{"app":"andere"}'); } catch (e) { err = e.message; }
@@ -78,8 +78,13 @@ eq(C.phaseLabel('x', [{ id: 'x', label: 'Keller' }]), 'Keller', 'eigener Bereich
 eq(C.phaseLabel('weg', []), '', 'gelöschter Bereich ohne Namen');
 
 // Personen
-eq(C.normalizeContact({ role: ' Architekt ', name: 'Alois Huber' }).role, 'Architekt', 'Person');
-eq(C.normalizeContact({ role: '', name: ' ' }), null, 'leere Person');
+eq(C.normalizeContact({ title: ' Architekt – Alois Huber ' }).title, 'Architekt – Alois Huber', 'Person');
+eq(C.normalizeContact({ title: ' ' }), null, 'leere Person');
+// Einträge aus Version 1.3/1.4 (Funktion + Name getrennt) – nie doppelt
+eq(C.normalizeContact({ role: 'Architekt', name: 'Alois Huber' }).title, 'Architekt – Alois Huber', 'Funktion + Name zusammengeführt');
+eq(C.normalizeContact({ role: 'Architekt Alois Huber', name: '' }).title, 'Architekt Alois Huber', 'nur Funktion');
+eq(C.normalizeContact({ role: 'Alois Huber', name: 'alois huber' }).title, 'alois huber', 'gleicher Text nur einmal');
+eq(C.normalizeContact({ role: 'Notiz', name: 'Fragen' }).title, 'Fragen', 'umgezogene Notiz ohne „Notiz“');
 
 // Links in Beschreibungen
 const segs = C.linkify('Tel. 0664 123 45 67, Mail alois.huber@arch.at, Web www.huber-architektur.at. Termin 14.10.2026 um 9');

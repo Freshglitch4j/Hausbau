@@ -302,17 +302,22 @@
     };
   }
 
-  // Person: Funktion (z. B. Architekt) + Name + freie Beschreibung
+  // Person: ein Titel (z. B. „Architekt – Alois Huber“) + freie Beschreibung.
+  // Ältere Einträge mit getrennter Funktion und Name werden zusammengeführt.
   function normalizeContact(o) {
     if (!o || typeof o !== 'object') return null;
-    var role = str(o.role, 80).trim();
-    var name = str(o.name, 120).trim();
-    if (!role && !name) return null;
+    var title = str(o.title, 200).trim();
+    if (!title) {
+      var role = str(o.role, 80).trim();
+      var name = str(o.name, 120).trim();
+      if (role === 'Notiz') role = '';
+      title = role && name && role.toLowerCase() !== name.toLowerCase() ? role + ' – ' + name : (name || role);
+    }
+    if (!title) return null;
     var created = typeof o.createdAt === 'string' ? o.createdAt : new Date().toISOString();
     return {
       id: str(o.id, 40) || uid(),
-      role: role,
-      name: name,
+      title: title,
       info: str(o.info, 20000),
       createdAt: created,
       updatedAt: typeof o.updatedAt === 'string' ? o.updatedAt : created
@@ -324,12 +329,12 @@
     n = normalizeNote(n);
     if (!n) return null;
     var lines = n.text.split('\n');
-    var name = n.title;
-    if (!name) {
+    var title = n.title;
+    if (!title) {
       while (lines.length && !lines[0].trim()) lines.shift();
-      name = (lines.shift() || '').trim();
+      title = (lines.shift() || '').trim();
     }
-    return normalizeContact({ id: n.id, role: 'Notiz', name: name.slice(0, 120), info: lines.join('\n').trim(), createdAt: n.createdAt, updatedAt: n.updatedAt });
+    return normalizeContact({ id: n.id, title: title.slice(0, 200), info: lines.join('\n').trim(), createdAt: n.createdAt, updatedAt: n.updatedAt });
   }
 
   // Zerlegt Text in Stücke; E-Mail, Telefon und Links werden antippbar

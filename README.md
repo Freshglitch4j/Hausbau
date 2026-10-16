@@ -21,10 +21,10 @@ Server, keine Werbung, offline nutzbar.
   Samsung-Kalender) – für Termine, die auf keinen Fall untergehen dürfen.
 - **Titel und Beschreibung**: In der Liste steht nur der Titel als schmaler
   Block, Antippen klappt die Beschreibung auf.
-- **Personen**: alle, mit denen du beim Hausbau zu tun hast – Funktion und Name
-  (z. B. „Architekt · Alois Huber“), aufgeklappt eine freie Beschreibung für
+- **Personen**: alle, mit denen du beim Hausbau zu tun hast – ein Titel
+  (z. B. „Architekt – Alois Huber“), aufgeklappt eine freie Beschreibung für
   Telefon, E-Mail, Adresse und Notizen. Telefonnummern, E-Mail- und
-  Internetadressen sind antippbar, dazu Knöpfe „Anrufen“ und „E-Mail“.
+  Internetadressen darin sind antippbar.
 - **Abhaken** mit „Rückgängig“; erledigte To-dos landen unten unter „Erledigt“.
 - **Vorlage** mit rund 18 typischen Hausbau-Schritten zum Starten.
 - **Datensicherung** als Datei (Mehr → Sicherung speichern / laden).
@@ -82,8 +82,8 @@ das Handy online ist. Spätestens beim zweiten Öffnen ist die neue Version akti
 | Löschen | Im To-do ganz unten |
 | Nach Bereich filtern | Chips oberhalb der Liste |
 | Bereiche ändern | **Mehr → Bereiche**: Namen antippen, Farbpunkt antippen, × zum Löschen (die To-dos bleiben, stehen dann „ohne Bereich“) |
-| Person anlegen | Reiter **Personen** → **+**: Funktion, Name, Beschreibung |
-| Person ansehen | Antippen klappt die Beschreibung auf; Nummer oder Adresse antippen ruft an bzw. öffnet die E-Mail |
+| Person anlegen | Reiter **Personen** → **+**: Titel und Beschreibung |
+| Person ansehen | Antippen klappt die Beschreibung auf; Nummer bzw. E-Mail-Adresse antippen ruft an bzw. schreibt eine E-Mail |
 
 ### Wie zuverlässig sind Erinnerungen?
 

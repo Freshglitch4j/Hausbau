@@ -253,7 +253,6 @@ button { cursor: pointer; }
   width: 100%;
 }
 .todo-head .todo-title { flex: 1 1 auto; min-width: 0; }
-.has-desc { flex: 0 0 auto; color: var(--text-faint); display: inline-flex; }
 .chev {
   flex: 0 0 auto;
   width: 8px; height: 8px;
@@ -383,7 +382,6 @@ button { cursor: pointer; }
   border: 1px dashed var(--line);
   border-radius: var(--radius-lg);
 }
-.empty strong { color: var(--text); font-size: 17px; }
 
 /* ------------------------------------------------------------ Knöpfe */
 
@@ -504,12 +502,7 @@ button { cursor: pointer; }
 
 /* ---------------------------------------------------------- Personen */
 
-.contact-title { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.contact-role { font-size: 12px; font-weight: 650; letter-spacing: 0.02em; color: var(--accent); line-height: 1.25; overflow-wrap: anywhere; }
-.contact-row .todo-head { padding-left: 4px; }
-.contact-row .todo-detail { padding-left: 4px; }
 .todo-desc a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
-a.pill { display: inline-flex; align-items: center; text-decoration: none; color: var(--text); }
 
 /* ---------------------------------------------------------- Bereiche */
 
@@ -545,14 +538,6 @@ a.pill { display: inline-flex; align-items: center; text-decoration: none; color
   font-size: 16px;
 }
 .phase-row .phase-input:focus { outline: none; border-color: var(--accent); background: var(--bg); }
-.phase-count {
-  flex: 0 0 auto;
-  font-size: 12px;
-  color: var(--text-faint);
-  font-variant-numeric: tabular-nums;
-  min-width: 18px;
-  text-align: right;
-}
 .phase-del {
   flex: 0 0 40px;
   height: 40px;

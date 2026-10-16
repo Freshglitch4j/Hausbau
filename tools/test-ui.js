@@ -154,23 +154,20 @@ async function drag(page, from, to) {
   await page.click('.tab[data-view="people"]');
   ok(await page.isVisible('#peopleEmpty'), 'Personen leer');
   await page.click('#fab');
-  await page.fill('#cRole', 'Architekt');
-  await page.fill('#cName', 'Alois Huber');
+  await page.fill('#cTitle', 'Architekt – Alois Huber');
   await page.fill('#cInfo', 'Tel. 0664 123 45 67\nalois@huber-arch.at\nBüro: Hauptstraße 5\nMag es kurz und knapp.');
   await page.click('#contactForm button[type="submit"]');
   await page.click('#fab');
-  await page.fill('#cRole', 'Bankberaterin');
-  await page.fill('#cName', 'Maria Gruber');
+  await page.fill('#cTitle', 'Bank – Maria Gruber');
   await page.click('#contactForm button[type="submit"]');
   const people = () => page.$$eval('#contactList .todo-title', (els) => els.map((e) => e.textContent));
-  ok(JSON.stringify(await people()) === JSON.stringify(['Alois Huber', 'Maria Gruber']), 'Personen angelegt', (await people()).join(' | '));
-  ok((await page.textContent('#contactList .contact-role')) === 'Architekt', 'Funktion sichtbar');
+  ok(JSON.stringify(await people()) === JSON.stringify(['Architekt – Alois Huber', 'Bank – Maria Gruber']), 'Personen angelegt', (await people()).join(' | '));
+  ok((await page.$$eval('#contactList .todo-row:first-child .todo-head', (els) => els[0].innerText.trim())) === 'Architekt – Alois Huber', 'Titel steht genau einmal');
   ok(!(await page.isVisible('#contactList .todo-desc')), 'Beschreibung zugeklappt verborgen');
   await page.click('#contactList .todo-row:first-child .todo-head');
   ok(await page.isVisible('#contactList .todo-row:first-child .todo-desc'), 'Antippen zeigt Beschreibung');
   ok((await page.getAttribute('#contactList .todo-desc a[href^="tel:"]', 'href')) === 'tel:06641234567', 'Telefon antippbar');
   ok((await page.getAttribute('#contactList .todo-desc a[href^="mailto:"]', 'href')) === 'mailto:alois@huber-arch.at', 'E-Mail antippbar');
-  ok(await page.isVisible('#contactList .detail-actions a:has-text("Anrufen")'), 'Anrufen-Knopf');
   await page.waitForTimeout(300);
   await shot(page, '04-personen');
   // Umsortieren
@@ -182,15 +179,15 @@ async function drag(page, from, to) {
   await page.mouse.down();
   for (let i = 1; i <= 10; i++) await page.mouse.move(ca.x + ca.width / 2, ca.y + ca.height / 2 + (cb.y + 5 - ca.y - ca.height / 2) * i / 10);
   await page.mouse.up();
-  ok((await people())[0] === 'Maria Gruber', 'Personen umsortieren');
+  ok((await people())[0] === 'Bank – Maria Gruber', 'Personen umsortieren');
 
   // Abbrechen mit Änderungen fragt nach (Dialog wird automatisch bestätigt)
   await page.click('#contactList .todo-row:first-child .todo-head');
   await page.click('#contactList .todo-row:first-child .detail-actions .pill:has-text("Bearbeiten")');
-  await page.fill('#cName', 'geändert');
+  await page.fill('#cTitle', 'geändert');
   await page.click('#contactDlg [data-close]');
   ok(!(await page.isVisible('#contactDlg')), 'Abbrechen schließt Dialog');
-  ok((await people())[0] === 'Maria Gruber', 'Abbrechen verwirft Änderung');
+  ok((await people())[0] === 'Bank – Maria Gruber', 'Abbrechen verwirft Änderung');
 
   // Bereiche selbst festlegen
   await page.click('.tab[data-view="more"]');
@@ -257,11 +254,17 @@ async function drag(page, from, to) {
       localStorage.clear();
       localStorage.setItem('seeded', '1');
       localStorage.setItem('hausbau.notes.v1', JSON.stringify([{ id: 'n1', title: '', text: 'Fragen an den Architekten\nWärmepumpe?', createdAt: '2026-10-10T10:00:00Z' }]));
+      // Personen aus Version 1.3/1.4: Funktion und Name getrennt bzw. nur ein Feld
+      localStorage.setItem('hausbau.contacts.v1', JSON.stringify([
+        { id: 'c1', role: 'Architekt Alois Huber', name: '', info: '' },
+        { id: 'c2', role: 'Baumeister', name: 'Franz Maier', info: '' }]));
     }
   });
   await page2.goto(url);
   await page2.click('.tab[data-view="people"]');
-  ok((await page2.textContent('#contactList .todo-title')) === 'Fragen an den Architekten', 'alte Notiz übernommen');
+  const migrated = await page2.$$eval('#contactList .todo-head', (els) => els.map((e) => e.innerText.trim()));
+  ok(JSON.stringify(migrated) === JSON.stringify(['Architekt Alois Huber', 'Baumeister – Franz Maier', 'Fragen an den Architekten']), 'alte Einträge: jeder Titel genau einmal', migrated.join(' | '));
+  ok(await page2.evaluate(() => JSON.parse(localStorage.getItem('hausbau.contacts.v1')).every((c) => c.title && !('role' in c))), 'alte Personen in neuer Form gespeichert');
   ok(await page2.evaluate(() => localStorage.getItem('hausbau.notes.v1') === null), 'alte Notizen aufgeräumt');
 
   ok(!errors.length, 'keine JS-Fehler', errors.join(' / '));

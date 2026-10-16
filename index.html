@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png" sizes="192x192">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="styles.css?v=5">
+<link rel="stylesheet" href="styles.css?v=6">
 </head>
 <body>
 
@@ -50,7 +50,7 @@
       <div id="doneList" class="todo-list is-done"></div>
     </details>
 
-    <p class="hint" id="sortHint" hidden>Am Griff <span aria-hidden="true">⠿</span> ziehen, um die Reihenfolge zu ändern. Oben steht immer, was als Nächstes dran ist.</p>
+    <p class="hint" id="sortHint" hidden>Am Griff <span aria-hidden="true">⠿</span> ziehen zum Sortieren.</p>
   </section>
 
   <!-- ============================================================ PERSONEN -->
@@ -63,11 +63,9 @@
     </header>
     <div id="contactList" class="todo-list contact-list" aria-label="Personen"></div>
     <div id="peopleEmpty" class="empty" hidden>
-      <p><strong>Noch keine Personen.</strong></p>
-      <p>Architekt, Baufirma, Bankberaterin, Bauamt … Hier sammelst du alle, mit denen du beim Hausbau zu tun hast – mit Telefon, E-Mail und Notizen.</p>
-      <button class="btn btn-primary" type="button" data-action="new-contact">Erste Person anlegen</button>
+      <p>Noch keine Personen.</p>
+      <button class="btn btn-primary" type="button" data-action="new-contact">Person anlegen</button>
     </div>
-    <p class="hint" id="peopleHint" hidden>Antippen zeigt die Details. Am Griff <span aria-hidden="true">⠿</span> ziehen, um die Reihenfolge zu ändern.</p>
   </section>
 
   <!-- ============================================================ MEHR -->
@@ -75,7 +73,6 @@
     <header class="topbar">
       <div>
         <h1>Mehr</h1>
-        <div class="sub">Einstellungen und Datensicherung</div>
       </div>
     </header>
 
@@ -87,8 +84,6 @@
 
     <div class="card">
       <h2>Bereiche</h2>
-      <p class="note-small">Die Bereiche, nach denen du deine To-dos ordnest. Namen antippen zum Ändern,
-        Farbpunkt antippen für eine andere Farbe, am Griff <span aria-hidden="true">⠿</span> ziehen zum Umsortieren.</p>
       <div id="phaseList" class="phase-list"></div>
       <div class="btnrow">
         <button class="btn" type="button" id="phaseAdd">+ Bereich hinzufügen</button>
@@ -99,12 +94,7 @@
       <h2>Erinnerungen</h2>
       <p class="note-small" id="notifyStatus">–</p>
       <button class="btn" type="button" id="notifyBtn">Benachrichtigungen erlauben</button>
-      <p class="note-small">
-        Android lässt Web-Apps keine Wecker stellen. Die App meldet fällige Erinnerungen deshalb,
-        solange sie geöffnet ist oder im Hintergrund noch läuft – und spätestens beim nächsten Öffnen.
-        Für Termine, die du auf keinen Fall verpassen darfst: im To-do auf
-        <strong>In Kalender eintragen</strong> tippen.
-      </p>
+      <p class="note-small">Wichtige Termine zusätzlich im To-do über <strong>In Google Kalender</strong> eintragen – dann erinnert sicher der Kalender.</p>
     </div>
 
     <div class="card">
@@ -118,10 +108,7 @@
 
     <div class="card">
       <h2>Datensicherung</h2>
-      <p class="note-small">
-        Alle Daten liegen nur auf diesem Handy. Lege ab und zu eine Sicherung an –
-        z.&nbsp;B. vor einem Handywechsel oder wenn du den Browser-Speicher löschst.
-      </p>
+      <p class="note-small">Alle Daten liegen nur auf diesem Handy.</p>
       <div class="btnrow">
         <button class="btn" type="button" id="exportBtn">Sicherung speichern</button>
         <button class="btn" type="button" id="importBtn">Sicherung laden</button>
@@ -131,7 +118,6 @@
 
     <div class="card">
       <h2>Vorlage</h2>
-      <p class="note-small">Fügt rund 18 typische Hausbau-Schritte unten an deine Liste an. Danach einfach löschen, was nicht passt, und den Rest sortieren.</p>
       <button class="btn" type="button" id="sampleBtn">Typische Schritte hinzufügen</button>
     </div>
 
@@ -246,36 +232,13 @@
     </div>
     <div class="sheet-body">
       <label class="field">
-        <span class="lbl">Funktion</span>
-        <input type="text" id="cRole" maxlength="80" autocomplete="off" list="roleList" enterkeyhint="next" placeholder="z. B. Architekt">
-      </label>
-      <datalist id="roleList">
-        <option value="Architekt"></option>
-        <option value="Baumeister"></option>
-        <option value="Baufirma"></option>
-        <option value="Bauleiter"></option>
-        <option value="Statiker"></option>
-        <option value="Bankberater"></option>
-        <option value="Notar"></option>
-        <option value="Bauamt / Gemeinde"></option>
-        <option value="Vermesser"></option>
-        <option value="Elektriker"></option>
-        <option value="Installateur"></option>
-        <option value="Dachdecker"></option>
-        <option value="Fliesenleger"></option>
-        <option value="Tischler"></option>
-        <option value="Energieberater"></option>
-        <option value="Versicherung"></option>
-      </datalist>
-      <label class="field">
-        <span class="lbl">Name</span>
-        <input type="text" id="cName" maxlength="120" autocomplete="off" enterkeyhint="next" placeholder="z. B. Alois Huber">
+        <span class="lbl">Titel</span>
+        <input type="text" id="cTitle" maxlength="200" autocomplete="off" enterkeyhint="next" placeholder="z. B. Architekt – Alois Huber">
       </label>
       <label class="field">
         <span class="lbl">Beschreibung</span>
-        <textarea id="cInfo" rows="6" placeholder="Telefon, E-Mail, Adresse, Firma, Notizen zur Person …"></textarea>
+        <textarea id="cInfo" rows="6" placeholder="Telefon, E-Mail, Adresse, Notizen …"></textarea>
       </label>
-      <p class="note-small">Telefonnummern, E-Mail-Adressen und Internetadressen werden in der Liste automatisch antippbar.</p>
       <div class="btnrow" id="cEditOnly">
         <button type="button" class="btn btn-danger" id="cDelete">Person löschen</button>
       </div>
@@ -285,7 +248,7 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button type="button" id="toastAction" hidden></button></div>
 
-<script src="core.js?v=5"></script>
-<script src="app.js?v=5"></script>
+<script src="core.js?v=6"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>
