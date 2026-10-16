@@ -6,7 +6,7 @@
   'use strict';
 
   var C = window.HausCore;
-  var APP_VERSION = '1.6';
+  var APP_VERSION = '1.7';
   var KEY_TODOS = 'hausbau.todos.v1';
   var KEY_CONTACTS = 'hausbau.contacts.v1';
   var KEY_NOTES = 'hausbau.notes.v1';      // bis 1.2 – wird zu Personen übernommen
