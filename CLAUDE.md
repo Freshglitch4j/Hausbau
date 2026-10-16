@@ -17,6 +17,11 @@ anderen Apps des Nutzers (Schlaftagebuch, Fitness).
   oder Hinweise, die nicht wirklich gebraucht werden.
 - Neue Funktionen fügen sich in dieses Muster ein (Liste → aufklappen →
   Bearbeiten, Sortieren am Griff ⠿).
+- Die **Reihenfolge = Priorität** ist das Wichtigste. Kategorien (Bereiche)
+  bleiben im Hintergrund: Filter nur über das Trichter-Symbol oben rechts,
+  keine Filterleisten über der Liste.
+- Personen: Name groß, Funktion klein darunter – in einem Block.
+- Seitliches Wischen wechselt zwischen To-dos und Personen.
 
 ## Farben
 

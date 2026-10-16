@@ -3,7 +3,7 @@
    ?v= eintragen (styles.css, core.js, app.js). Die Versionsnummer in der
    Adresse sorgt dafür, dass nie eine alte app.js zu einer neuen Seite geladen
    wird – auch nicht von einem noch laufenden alten Service Worker. */
-const VERSION = 'hausbau-v8';
+const VERSION = 'hausbau-v9';
 const ASSETS = [
   './',
   './index.html',

@@ -48,6 +48,22 @@ async function drag(page, from, to) {
   await page.waitForTimeout(50);
 }
 
+// Filter über das Trichter-Symbol oben rechts wählen
+async function filterBy(page, kind, id) {
+  await page.click('.filterbtn[data-filter="' + kind + '"]');
+  await page.click('#filterMenu [data-phase="' + id + '"]');
+}
+
+// Seitliches Wischen mit echten Touch-Ereignissen
+async function swipe(page, dx) {
+  const cdp = await page.context().newCDPSession(page);
+  const y = 520, x0 = dx < 0 ? 330 : 80;
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y }] });
+  for (let i = 1; i <= 6; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x0 + dx * i / 6, y: y + i }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await page.waitForTimeout(80);
+}
+
 (async () => {
   const srv = await serve();
   const url = 'http://localhost:' + srv.address().port + '/';
@@ -82,14 +98,17 @@ async function drag(page, from, to) {
   ok(t[3] === first, 'Ziehen nach unten', t.slice(0, 5).join(' | '));
 
   // Filter + Ziehen im Filter
-  await page.click('#phaseChips [data-phase="bau"]');
+  ok(!(await page.$('#phaseChips')), 'keine Filter-Leiste mehr oben');
+  await filterBy(page, 'todos', 'bau');
+  ok((await page.textContent('#todoSub')).startsWith('Bau'), 'aktiver Filter steht klein unter der Überschrift', await page.textContent('#todoSub'));
   let bau = await titles(page);
   ok(bau.length === 3, 'Filter Bau', bau.length);
   await drag(page, 2, 0);
   bau = await titles(page);
   ok(bau[0] === 'Endabnahme mit Mängelprotokoll', 'Ziehen im Filter', bau.join(' | '));
-  await page.click('#phaseChips [data-phase="all"]');
+  await page.click('#todoSub .filter-pill');
   const all = await titles(page);
+  ok(all.length > 3, 'Filter per × aufgehoben');
   ok(all.indexOf('Endabnahme mit Mängelprotokoll') < all.indexOf('Rohbauabnahme'), 'Filter-Reihenfolge in Gesamtliste übernommen');
   ok(all[all.length - 1] === 'Erdarbeiten und Fundament / Bodenplatte' || all.length === 18, 'Gesamtliste vollständig', all.length);
 
@@ -154,15 +173,28 @@ async function drag(page, from, to) {
   await page.click('.tab[data-view="people"]');
   ok(await page.isVisible('#peopleEmpty'), 'Personen leer');
   await page.click('#fab');
-  await page.fill('#cTitle', 'Architekt – Alois Huber');
+  await page.fill('#cName', 'Alois Huber');
+  await page.fill('#cRole', 'Architekt');
+  await page.click('#cPhase [data-phase="planung"]');
+  await page.click('#cPhase [data-phase="behoerden"]');
   await page.fill('#cInfo', 'Tel. 0664 123 45 67\nalois@huber-arch.at\nBüro: Hauptstraße 5\nMag es kurz und knapp.');
   await page.click('#contactForm button[type="submit"]');
   await page.click('#fab');
-  await page.fill('#cTitle', 'Bank – Maria Gruber');
+  await page.fill('#cName', 'Maria Gruber');
+  await page.fill('#cRole', 'Bankberaterin');
+  await page.click('#cPhase [data-phase="finanzen"]');
   await page.click('#contactForm button[type="submit"]');
   const people = () => page.$$eval('#contactList .todo-title', (els) => els.map((e) => e.textContent));
-  ok(JSON.stringify(await people()) === JSON.stringify(['Architekt – Alois Huber', 'Bank – Maria Gruber']), 'Personen angelegt', (await people()).join(' | '));
-  ok((await page.$$eval('#contactList .todo-row:first-child .todo-head', (els) => els[0].innerText.trim())) === 'Architekt – Alois Huber', 'Titel steht genau einmal');
+  ok(JSON.stringify(await people()) === JSON.stringify(['Alois Huber', 'Maria Gruber']), 'Personen angelegt', (await people()).join(' | '));
+  ok((await page.textContent('#contactList .todo-row:first-child .contact-role')) === 'Architekt', 'Funktion unter dem Namen');
+  ok((await page.$$eval('#contactList .todo-row:first-child .todo-head', (els) => els[0].innerText.trim())) === 'Alois Huber\nArchitekt', 'Name und Funktion je einmal, untereinander');
+  // Personen nach Bereich filtern (mehrere Bereiche je Person)
+  await filterBy(page, 'people', 'behoerden');
+  ok(JSON.stringify(await people()) === JSON.stringify(['Alois Huber']), 'Personen-Filter Behörden');
+  await filterBy(page, 'people', 'planung');
+  ok(JSON.stringify(await people()) === JSON.stringify(['Alois Huber']), 'Personen-Filter Planung');
+  await filterBy(page, 'people', 'all');
+  ok((await people()).length === 2, 'Personen-Filter aufgehoben');
   ok(!(await page.isVisible('#contactList .todo-desc')), 'Beschreibung zugeklappt verborgen');
   await page.click('#contactList .todo-row:first-child .todo-head');
   ok(await page.isVisible('#contactList .todo-row:first-child .todo-desc'), 'Antippen zeigt Beschreibung');
@@ -179,15 +211,23 @@ async function drag(page, from, to) {
   await page.mouse.down();
   for (let i = 1; i <= 10; i++) await page.mouse.move(ca.x + ca.width / 2, ca.y + ca.height / 2 + (cb.y + 5 - ca.y - ca.height / 2) * i / 10);
   await page.mouse.up();
-  ok((await people())[0] === 'Bank – Maria Gruber', 'Personen umsortieren');
+  ok((await people())[0] === 'Maria Gruber', 'Personen umsortieren');
 
   // Abbrechen mit Änderungen fragt nach (Dialog wird automatisch bestätigt)
   await page.click('#contactList .todo-row:first-child .todo-head');
   await page.click('#contactList .todo-row:first-child .detail-actions .pill:has-text("Bearbeiten")');
-  await page.fill('#cTitle', 'geändert');
+  await page.fill('#cName', 'geändert');
   await page.click('#contactDlg [data-close]');
   ok(!(await page.isVisible('#contactDlg')), 'Abbrechen schließt Dialog');
-  ok((await people())[0] === 'Bank – Maria Gruber', 'Abbrechen verwirft Änderung');
+  ok((await people())[0] === 'Maria Gruber', 'Abbrechen verwirft Änderung');
+
+  // Seitlich wischen: Personen → To-dos → Personen
+  await swipe(page, 220);
+  ok(await page.isVisible('#view-todos'), 'Wischen nach rechts: To-dos');
+  await swipe(page, -220);
+  ok(await page.isVisible('#view-people'), 'Wischen nach links: Personen');
+  await swipe(page, -220);
+  ok(await page.isVisible('#view-people'), 'weiter links: bleibt bei Personen');
 
   // Bereiche selbst festlegen
   await page.click('.tab[data-view="more"]');
@@ -204,12 +244,14 @@ async function drag(page, from, to) {
   await page.click('#phaseList .phase-row:first-child .color-dot');
   await shot(page, '05b-bereiche');
   await page.click('.tab[data-view="todos"]');
-  const chipNames = await page.$$eval('#phaseChips .chip', (els) => els.map((e) => e.firstChild.textContent));
-  ok(chipNames.includes('Rohbau') && chipNames.includes('Garten') && !chipNames.includes('Bau'), 'Filter-Chips folgen den Bereichen', chipNames.join(','));
-  ok(chipNames.includes('Ohne Bereich'), 'Chip „Ohne Bereich“ für To-dos des gelöschten Bereichs');
-  await page.click('#phaseChips .chip:has-text("Ohne Bereich")');
+  await page.click('.filterbtn[data-filter="todos"]');
+  await shot(page, '06a-filter');
+  const chipNames = await page.$$eval('#filterMenu .menu-label', (els) => els.map((e) => e.textContent));
+  ok(chipNames.includes('Rohbau') && chipNames.includes('Garten') && !chipNames.includes('Bau'), 'Filter-Auswahl folgt den Bereichen', chipNames.join(','));
+  ok(chipNames.includes('Ohne Bereich'), '„Ohne Bereich“ für To-dos des gelöschten Bereichs');
+  await page.click('#filterMenu .menu-item:has-text("Ohne Bereich")');
   ok((await titles(page)).includes('Termin beim Notar'), 'To-do des gelöschten Bereichs bleibt erhalten');
-  await page.click('#phaseChips [data-phase="all"]');
+  await filterBy(page, 'todos', 'all');
   await page.click('#fab');
   ok((await page.$$eval('#tPhase .chip', (els) => els.map((e) => e.textContent))).includes('Garten'), 'Editor zeigt eigene Bereiche');
   await page.click('#tPhase .chip:has-text("Garten")');
@@ -254,17 +296,18 @@ async function drag(page, from, to) {
       localStorage.clear();
       localStorage.setItem('seeded', '1');
       localStorage.setItem('hausbau.notes.v1', JSON.stringify([{ id: 'n1', title: '', text: 'Fragen an den Architekten\nWärmepumpe?', createdAt: '2026-10-10T10:00:00Z' }]));
-      // Personen aus Version 1.3/1.4: Funktion und Name getrennt bzw. nur ein Feld
+      // Personen aus älteren Versionen: 1.3/1.4 (Funktion + Name) und 1.5–1.7 (ein Titel)
       localStorage.setItem('hausbau.contacts.v1', JSON.stringify([
         { id: 'c1', role: 'Architekt Alois Huber', name: '', info: '' },
-        { id: 'c2', role: 'Baumeister', name: 'Franz Maier', info: '' }]));
+        { id: 'c2', role: 'Baumeister', name: 'Franz Maier', info: '' },
+        { id: 'c3', title: 'Statiker – Eva Berger', info: 'Tel. 0676 1234567' }]));
     }
   });
   await page2.goto(url);
   await page2.click('.tab[data-view="people"]');
   const migrated = await page2.$$eval('#contactList .todo-head', (els) => els.map((e) => e.innerText.trim()));
-  ok(JSON.stringify(migrated) === JSON.stringify(['Architekt Alois Huber', 'Baumeister – Franz Maier', 'Fragen an den Architekten']), 'alte Einträge: jeder Titel genau einmal', migrated.join(' | '));
-  ok(await page2.evaluate(() => JSON.parse(localStorage.getItem('hausbau.contacts.v1')).every((c) => c.title && !('role' in c))), 'alte Personen in neuer Form gespeichert');
+  ok(JSON.stringify(migrated) === JSON.stringify(['Architekt Alois Huber', 'Franz Maier\nBaumeister', 'Eva Berger\nStatiker', 'Fragen an den Architekten']), 'alte Einträge: Name/Funktion je einmal', migrated.join(' | '));
+  ok(await page2.evaluate(() => JSON.parse(localStorage.getItem('hausbau.contacts.v1')).every((c) => c.name && !('title' in c) && Array.isArray(c.phases))), 'alte Personen in neuer Form gespeichert');
   ok(await page2.evaluate(() => localStorage.getItem('hausbau.notes.v1') === null), 'alte Notizen aufgeräumt');
 
   ok(!errors.length, 'keine JS-Fehler', errors.join(' / '));

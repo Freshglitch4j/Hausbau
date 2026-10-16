@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png" sizes="192x192">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="styles.css?v=8">
+<link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
 
@@ -26,6 +26,9 @@
         <h1>Hausbau</h1>
         <div class="sub" id="todoSub">–</div>
       </div>
+      <button class="filterbtn" type="button" data-filter="todos" aria-label="Nach Bereich filtern">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6.2 7.4V19l-3.6-1.8v-4.8z"/></svg>
+      </button>
     </header>
 
     <div class="installbar" id="installBar" hidden>
@@ -38,8 +41,6 @@
     </div>
 
     <div id="reminderBox" class="reminders" aria-live="polite"></div>
-
-    <div class="chips" id="phaseChips" role="tablist" aria-label="Bereich filtern"></div>
 
     <div id="todoList" class="todo-list" aria-label="Offene To-dos"></div>
 
@@ -60,10 +61,13 @@
         <h1>Personen</h1>
         <div class="sub" id="peopleSub">–</div>
       </div>
+      <button class="filterbtn" type="button" data-filter="people" aria-label="Nach Bereich filtern">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6.2 7.4V19l-3.6-1.8v-4.8z"/></svg>
+      </button>
     </header>
     <div id="contactList" class="todo-list contact-list" aria-label="Personen"></div>
     <div id="peopleEmpty" class="empty" hidden>
-      <p>Noch keine Personen.</p>
+      <p id="peopleEmptyText">Noch keine Personen.</p>
       <button class="btn btn-primary" type="button" data-action="new-contact">Person anlegen</button>
     </div>
   </section>
@@ -232,9 +236,17 @@
     </div>
     <div class="sheet-body">
       <label class="field">
-        <span class="lbl">Titel</span>
-        <input type="text" id="cTitle" maxlength="200" autocomplete="off" enterkeyhint="next" placeholder="z. B. Architekt – Alois Huber">
+        <span class="lbl">Name</span>
+        <input type="text" id="cName" maxlength="120" autocomplete="off" enterkeyhint="next" placeholder="z. B. Alois Huber">
       </label>
+      <label class="field">
+        <span class="lbl">Funktion</span>
+        <input type="text" id="cRole" maxlength="120" autocomplete="off" enterkeyhint="next" placeholder="z. B. Architekt">
+      </label>
+      <div class="field" id="cPhaseField">
+        <span class="lbl">Bereiche</span>
+        <div class="chips chips-wrap" id="cPhase" role="group" aria-label="Bereiche"></div>
+      </div>
       <label class="field">
         <span class="lbl">Beschreibung</span>
         <textarea id="cInfo" rows="6" placeholder="Telefon, E-Mail, Adresse, Notizen …"></textarea>
@@ -246,9 +258,12 @@
   </form>
 </dialog>
 
+<!-- Filter-Auswahl -->
+<div class="menu" id="filterMenu" role="menu" hidden></div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button type="button" id="toastAction" hidden></button></div>
 
-<script src="core.js?v=8"></script>
-<script src="app.js?v=8"></script>
+<script src="core.js?v=9"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>

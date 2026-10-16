@@ -302,22 +302,30 @@
     };
   }
 
-  // Person: ein Titel (z. B. „Architekt – Alois Huber“) + freie Beschreibung.
-  // Ältere Einträge mit getrennter Funktion und Name werden zusammengeführt.
+  // Person: Name + Funktion + Bereiche (mehrere möglich) + freie Beschreibung.
+  // Ältere Formen werden gelesen: 1.3/1.4 (role/name), 1.5–1.7 (ein Titel
+  // „Funktion – Name“).
   function normalizeContact(o) {
     if (!o || typeof o !== 'object') return null;
+    var name = str(o.name, 120).trim();
+    var role = str(o.role, 120).trim();
     var title = str(o.title, 200).trim();
-    if (!title) {
-      var role = str(o.role, 80).trim();
-      var name = str(o.name, 120).trim();
-      if (role === 'Notiz') role = '';
-      title = role && name && role.toLowerCase() !== name.toLowerCase() ? role + ' – ' + name : (name || role);
+    if (title && !name && !role) {
+      var cut = title.indexOf(' – ');
+      if (cut > 0) { role = title.slice(0, cut).trim(); name = title.slice(cut + 3).trim(); }
+      else name = title;
     }
-    if (!title) return null;
+    if (role === 'Notiz') role = '';
+    if (!name) { name = role; role = ''; }
+    if (role && role.toLowerCase() === name.toLowerCase()) role = '';
+    if (!name) return null;
     var created = typeof o.createdAt === 'string' ? o.createdAt : new Date().toISOString();
+    var phases = Array.isArray(o.phases) ? o.phases.filter(function (p) { return typeof p === 'string' && p; }).slice(0, 20) : [];
     return {
       id: str(o.id, 40) || uid(),
-      title: title,
+      name: name,
+      role: role,
+      phases: phases,
       info: str(o.info, 20000),
       createdAt: created,
       updatedAt: typeof o.updatedAt === 'string' ? o.updatedAt : created
@@ -334,7 +342,7 @@
       while (lines.length && !lines[0].trim()) lines.shift();
       title = (lines.shift() || '').trim();
     }
-    return normalizeContact({ id: n.id, title: title.slice(0, 200), info: lines.join('\n').trim(), createdAt: n.createdAt, updatedAt: n.updatedAt });
+    return normalizeContact({ id: n.id, name: title.slice(0, 120), info: lines.join('\n').trim(), createdAt: n.createdAt, updatedAt: n.updatedAt });
   }
 
   // Zerlegt Text in Stücke; E-Mail, Telefon und Links werden antippbar

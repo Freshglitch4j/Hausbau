@@ -10,9 +10,9 @@ Server, keine Werbung, offline nutzbar.
   (hervorgehoben als „Als Nächstes“). Umsortieren am Griff **⠿** links: gedrückt
   halten und nach oben oder unten ziehen. Am Bildschirmrand scrollt die Liste mit.
 - **Bereiche** frei festlegen (Mehr → Bereiche): umbenennen, hinzufügen,
-  löschen, umsortieren, Farbe wählen. Vorgabe: Planung, Finanzierung, Behörden,
-  Bau, Ausbau, Sonstiges. Oben per Chip filtern – auch in der gefilterten
-  Ansicht lässt sich sortieren.
+  löschen, umsortieren, Farbe wählen. Filtern über das kleine
+  Trichter-Symbol oben rechts; ein aktiver Filter steht klein unter der
+  Überschrift (× hebt ihn auf).
 - **Frist** („Erledigen bis“) mit Hinweis „in 3 Tagen“ bzw. rot bei Überfälligem.
 - **Erinnerungen** mit Datum und Uhrzeit, Schnellwahl „Heute 19 Uhr“,
   „Morgen 8 Uhr“, „In 1 Woche“. Fällige Erinnerungen erscheinen oben in der App
@@ -21,10 +21,10 @@ Server, keine Werbung, offline nutzbar.
   Samsung-Kalender) – für Termine, die auf keinen Fall untergehen dürfen.
 - **Titel und Beschreibung**: In der Liste steht nur der Titel als schmaler
   Block, Antippen klappt die Beschreibung auf.
-- **Personen**: alle, mit denen du beim Hausbau zu tun hast – ein Titel
-  (z. B. „Architekt – Alois Huber“), aufgeklappt eine freie Beschreibung für
-  Telefon, E-Mail, Adresse und Notizen. Telefonnummern, E-Mail- und
-  Internetadressen darin sind antippbar.
+- **Personen**: Name und Funktion (z. B. „Alois Huber“ / „Architekt“),
+  dazu ein oder mehrere Bereiche. Aufgeklappt eine freie Beschreibung für
+  Telefon, E-Mail, Adresse und Notizen – Nummern und Adressen sind antippbar.
+- **Seitlich wischen** wechselt zwischen To-dos und Personen.
 - **Abhaken** mit „Rückgängig“; erledigte To-dos landen unten unter „Erledigt“.
 - **Vorlage** mit rund 18 typischen Hausbau-Schritten zum Starten.
 - **Datensicherung** als Datei (Mehr → Sicherung speichern / laden).
@@ -80,9 +80,10 @@ das Handy online ist. Spätestens beim zweiten Öffnen ist die neue Version akti
 | Erledigt | Kreis antippen – kurz danach „Rückgängig“ möglich |
 | Bearbeiten | Block aufklappen → **Bearbeiten** |
 | Löschen | Im To-do ganz unten |
-| Nach Bereich filtern | Chips oberhalb der Liste |
-| Bereiche ändern | **Mehr → Bereiche**: Namen antippen, Farbpunkt antippen, × zum Löschen (die To-dos bleiben, stehen dann „ohne Bereich“) |
-| Person anlegen | Reiter **Personen** → **+**: Titel und Beschreibung |
+| Nach Bereich filtern | Trichter-Symbol oben rechts; × neben dem Filternamen hebt ihn auf |
+| Bereiche ändern | **Mehr → Bereiche**: Namen antippen, Farbpunkt antippen, × zum Löschen (To-dos und Personen bleiben erhalten) |
+| Seite wechseln | Seitlich wischen zwischen To-dos und Personen, oder unten antippen |
+| Person anlegen | Reiter **Personen** → **+**: Name, Funktion, Bereiche, Beschreibung |
 | Person ansehen | Antippen klappt die Beschreibung auf; Nummer bzw. E-Mail-Adresse antippen ruft an bzw. schreibt eine E-Mail |
 
 ### Wie zuverlässig sind Erinnerungen?

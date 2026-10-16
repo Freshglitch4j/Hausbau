@@ -62,7 +62,8 @@ const back = C.parseBackup(backup);
 eq([back.todos.length, back.contacts.length], [2, 1], 'Sicherung: leere Person fällt weg');
 eq(back.phases, [{ id: 'x', label: 'Keller', color: 3 }], 'Sicherung: eigene Bereiche');
 const old = C.parseBackup(JSON.stringify({ app: 'hausbau', format: 1, todos: [], notes: [{ title: '', text: 'Fragen\nWärmepumpe?' }] }));
-eq([old.contacts[0].title, old.contacts[0].info, old.phases], ['Fragen', 'Wärmepumpe?', null], 'alte Sicherung: Notizen werden Personen-Einträge');
+eq([old.contacts[0].name, old.contacts[0].role, old.contacts[0].info, old.phases], ['Fragen', '', 'Wärmepumpe?', null], 'alte Sicherung: Notizen werden Personen-Einträge');
+eq([back.contacts[0].name, back.contacts[0].role], ['Alois Huber', 'Architekt'], 'Sicherung 1.5–1.7: Titel wird zu Name + Funktion');
 eq(back.todos[0].id !== back.todos[1].id, true, 'Sicherung: doppelte IDs werden aufgelöst');
 let err = '';
 try { C.parseBackup('{"app":"andere"}'); } catch (e) { err = e.message; }
@@ -78,13 +79,18 @@ eq(C.phaseLabel('x', [{ id: 'x', label: 'Keller' }]), 'Keller', 'eigener Bereich
 eq(C.phaseLabel('weg', []), '', 'gelöschter Bereich ohne Namen');
 
 // Personen
-eq(C.normalizeContact({ title: ' Architekt – Alois Huber ' }).title, 'Architekt – Alois Huber', 'Person');
-eq(C.normalizeContact({ title: ' ' }), null, 'leere Person');
-// Einträge aus Version 1.3/1.4 (Funktion + Name getrennt) – nie doppelt
-eq(C.normalizeContact({ role: 'Architekt', name: 'Alois Huber' }).title, 'Architekt – Alois Huber', 'Funktion + Name zusammengeführt');
-eq(C.normalizeContact({ role: 'Architekt Alois Huber', name: '' }).title, 'Architekt Alois Huber', 'nur Funktion');
-eq(C.normalizeContact({ role: 'Alois Huber', name: 'alois huber' }).title, 'alois huber', 'gleicher Text nur einmal');
-eq(C.normalizeContact({ role: 'Notiz', name: 'Fragen' }).title, 'Fragen', 'umgezogene Notiz ohne „Notiz“');
+const pc = (o) => { const c = C.normalizeContact(o); return c && [c.name, c.role]; };
+eq(pc({ name: ' Alois Huber ', role: ' Architekt ', phases: ['planung', 3, ''] }), ['Alois Huber', 'Architekt'], 'Person: Name + Funktion');
+eq(C.normalizeContact({ name: 'A', phases: ['planung', 3, ''] }).phases, ['planung'], 'Person: Bereiche geprüft');
+eq(C.normalizeContact({ name: ' ', role: '' }), null, 'leere Person');
+// Ältere Formen – nie doppelt
+eq(pc({ title: 'Architekt – Alois Huber' }), ['Alois Huber', 'Architekt'], '1.5–1.7: Titel aufgeteilt');
+eq(pc({ title: 'Architekt Alois Huber' }), ['Architekt Alois Huber', ''], '1.5–1.7: Titel ohne Strich = Name');
+eq(pc({ role: 'Architekt', name: 'Alois Huber' }), ['Alois Huber', 'Architekt'], '1.3/1.4: Funktion + Name');
+eq(pc({ role: 'Architekt Alois Huber', name: '' }), ['Architekt Alois Huber', ''], '1.3/1.4: nur Funktion → Name');
+eq(pc({ role: 'Alois Huber', name: 'alois huber' }), ['alois huber', ''], 'gleicher Text nur einmal');
+eq(pc({ role: 'Notiz', name: 'Fragen' }), ['Fragen', ''], 'umgezogene Notiz ohne „Notiz“');
+eq(C.normalizeContact({ name: 'X' }).phases, [], 'ohne Bereiche');
 
 // Links in Beschreibungen
 const segs = C.linkify('Tel. 0664 123 45 67, Mail alois.huber@arch.at, Web www.huber-architektur.at. Termin 14.10.2026 um 9');

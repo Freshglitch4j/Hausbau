@@ -6,7 +6,7 @@
   'use strict';
 
   var C = window.HausCore;
-  var APP_VERSION = '1.7';
+  var APP_VERSION = '1.8';
   var KEY_TODOS = 'hausbau.todos.v1';
   var KEY_CONTACTS = 'hausbau.contacts.v1';
   var KEY_NOTES = 'hausbau.notes.v1';      // bis 1.2 – wird zu Personen übernommen
@@ -16,12 +16,13 @@
   var state = {
     todos: [],          // Reihenfolge im Array = Priorität / Zeitachse
     contacts: [],       // Reihenfolge frei sortierbar
-    settings: { theme: 'auto', filter: 'all', phases: [] },
+    settings: { theme: 'auto', filter: 'all', peopleFilter: 'all', phases: [] },
     view: 'todos',
     editTodo: null,     // id oder null (= neu)
     newPos: 'bottom',
     editPhase: '',
     editContact: null,
+    editContactPhases: [],
     expanded: {}        // aufgeklappte Einträge (nur für diese Sitzung)
   };
 
@@ -100,11 +101,12 @@
     state.settings.theme = ['auto', 'dark', 'light'].indexOf(s.theme) >= 0 ? s.theme : 'auto';
     state.settings.phases = C.normalizePhases(s.phases);
     state.settings.filter = validFilter(s.filter);
+    state.settings.peopleFilter = validFilter(s.peopleFilter);
 
     var contacts = load(KEY_CONTACTS, null);
     state.contacts = (contacts || []).map(C.normalizeContact).filter(Boolean);
-    // Einträge aus 1.3/1.4 (Funktion + Name) einmalig als Titel speichern
-    if ((contacts || []).some(function (c) { return c && !c.title; })) saveContacts();
+    // Ältere Formen (1.3–1.7) einmalig in der neuen Form speichern
+    if ((contacts || []).some(function (c) { return c && (!('name' in c) || 'title' in c || !Array.isArray(c.phases)); })) saveContacts();
     // Einmalig: Notizen aus Version 1.2 bei den Personen übernehmen
     var notes = load(KEY_NOTES, null);
     if (Array.isArray(notes) && notes.length) {
@@ -119,6 +121,10 @@
 
   function phases() { return state.settings.phases; }
   function phaseOf(t) { return C.findPhase(phases(), t.phase); }
+
+  function contactPhases(c) {
+    return c.phases.map(function (id) { return C.findPhase(phases(), id); }).filter(Boolean);
+  }
 
   function validFilter(f) {
     return f === 'all' || f === NONE || C.findPhase(phases(), f) ? f : 'all';
@@ -144,6 +150,84 @@
     });
   }
 
+  function visibleContacts() {
+    var f = state.settings.peopleFilter;
+    return state.contacts.filter(function (c) {
+      if (f === 'all') return true;
+      if (f === NONE) return !contactPhases(c).length;
+      return c.phases.indexOf(f) >= 0;
+    });
+  }
+
+  /* ------------------------------------------------------------- Filter */
+
+  // Unauffällig: kleines Trichter-Symbol in der Kopfzeile, Auswahl als kurze
+  // Liste. Ein aktiver Filter steht klein unter der Überschrift (× hebt ihn auf).
+  var FILTER_KEY = { todos: 'filter', people: 'peopleFilter' };
+
+  function filterLabel(f) {
+    return f === NONE ? 'Ohne Bereich' : C.phaseLabel(f, phases());
+  }
+
+  function setFilter(kind, f) {
+    state.settings[FILTER_KEY[kind]] = validFilter(f);
+    saveSettings();
+    if (kind === 'todos') renderTodos(); else renderPeople();
+  }
+
+  // Unterzeile: Text + ggf. kleiner Hinweis auf den aktiven Filter
+  function renderSub(box, text, kind) {
+    var f = state.settings[FILTER_KEY[kind]];
+    box.textContent = '';
+    if (f !== 'all') {
+      box.appendChild(el('button', {
+        class: 'filter-pill', type: 'button', 'aria-label': 'Filter „' + filterLabel(f) + '“ aufheben',
+        onclick: function () { setFilter(kind, 'all'); }
+      }, [filterLabel(f) + ' ', el('span', { 'aria-hidden': 'true', text: '×' })]));
+      box.appendChild(document.createTextNode(' '));
+    }
+    box.appendChild(document.createTextNode(text));
+    var btn = $('.filterbtn[data-filter="' + kind + '"]');
+    btn.classList.toggle('is-on', f !== 'all');
+    btn.hidden = !phases().length && f === 'all';
+  }
+
+  function openFilterMenu(kind, btn) {
+    var menu = $('#filterMenu');
+    if (!menu.hidden && menu.dataset.kind === kind) { closeFilterMenu(); return; }
+    var current = state.settings[FILTER_KEY[kind]];
+    var items = kind === 'todos' ? openTodos() : state.contacts;
+    var hasNone = items.some(function (x) { return kind === 'todos' ? !phaseOf(x) : !contactPhases(x).length; });
+    var opts = [{ id: 'all', label: 'Alle' }].concat(phases());
+    if (hasNone || current === NONE) opts.push({ id: NONE, label: 'Ohne Bereich' });
+    menu.textContent = '';
+    menu.dataset.kind = kind;
+    opts.forEach(function (p) {
+      var on = current === p.id;
+      menu.appendChild(el('button', {
+        type: 'button', class: 'menu-item' + (on ? ' is-on' : ''), role: 'menuitemradio',
+        'aria-checked': on ? 'true' : 'false', 'data-phase': p.id,
+        onclick: function () { closeFilterMenu(); setFilter(kind, p.id); }
+      }, [
+        el('span', { class: 'menu-dot' + (p.color ? ' ph-' + p.color : ''), 'aria-hidden': 'true' }),
+        el('span', { class: 'menu-label', text: p.label }),
+        on ? el('span', { class: 'menu-check', 'aria-hidden': 'true', text: '✓' }) : null
+      ]));
+    });
+    var r = btn.getBoundingClientRect();
+    menu.style.top = Math.round(r.bottom + window.scrollY + 6) + 'px';
+    menu.style.right = Math.max(8, Math.round(window.innerWidth - r.right)) + 'px';
+    menu.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeFilterMenu() {
+    var menu = $('#filterMenu');
+    if (menu.hidden) return;
+    menu.hidden = true;
+    $$('.filterbtn').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
+  }
+
   /* ------------------------------------------------------------- Design */
 
   var darkMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
@@ -161,7 +245,11 @@
 
   /* -------------------------------------------------------- Ansichten */
 
-  function showView(name) {
+  var VIEW_ORDER = ['todos', 'people'];
+
+  function showView(name, from) {
+    closeFilterMenu();
+    var prev = state.view;
     state.view = name;
     $$('.view').forEach(function (v) { v.classList.toggle('is-active', v.id === 'view-' + name); });
     $$('.tab').forEach(function (b) {
@@ -173,6 +261,13 @@
     fab.hidden = name === 'more';
     fab.setAttribute('aria-label', name === 'people' ? 'Neue Person' : 'Neues To-do');
     if (name === 'more') renderMore();
+    // Beim Wischen gleitet die neue Seite von der passenden Seite herein
+    if (from && prev !== name) {
+      var v = $('#view-' + name);
+      v.classList.remove('slide-l', 'slide-r');
+      void v.offsetWidth;
+      v.classList.add(from === 'right' ? 'slide-l' : 'slide-r');
+    }
     window.scrollTo(0, 0);
   }
 
@@ -187,10 +282,7 @@
     if (done.length) sub += ' · ' + done.length + ' erledigt';
     var overdue = open.filter(function (t) { return C.dueState(t, now) === 'overdue'; }).length;
     if (overdue) sub += ' · ' + overdue + ' überfällig';
-    $('#todoSub').textContent = sub;
-
-    renderChips(open);
-    $('#phaseChips').hidden = !state.todos.length;
+    renderSub($('#todoSub'), sub, 'todos');
     renderReminders();
 
     var list = $('#todoList');
@@ -226,31 +318,6 @@
     dl.textContent = '';
     done.slice().sort(function (a, b) { return a.doneAt < b.doneAt ? 1 : -1; })
       .forEach(function (t) { dl.appendChild(doneRow(t)); });
-  }
-
-  function renderChips(open) {
-    var box = $('#phaseChips');
-    box.textContent = '';
-    var counts = { all: open.length };
-    open.forEach(function (t) {
-      var k = phaseOf(t) ? t.phase : NONE;
-      counts[k] = (counts[k] || 0) + 1;
-    });
-    var items = [{ id: 'all', label: 'Alle' }].concat(phases());
-    if (counts[NONE] || state.settings.filter === NONE) items.push({ id: NONE, label: 'Ohne Bereich' });
-    items.forEach(function (p) {
-      var on = state.settings.filter === p.id;
-      box.appendChild(el('button', {
-        type: 'button', class: 'chip' + (on ? ' is-on' : ''), role: 'tab',
-        'aria-selected': on ? 'true' : 'false',
-        'data-phase': p.id,
-        onclick: function () {
-          state.settings.filter = p.id;
-          saveSettings();
-          renderTodos();
-        }
-      }, [p.label, counts[p.id] ? el('span', { class: 'chip-count', text: String(counts[p.id]) }) : null]));
-    });
   }
 
   function metaParts(t) {
@@ -786,9 +853,11 @@
     var list = $('#contactList');
     list.textContent = '';
     var n = state.contacts.length;
-    $('#peopleSub').textContent = n === 1 ? '1 Person' : n + ' Personen';
-    $('#peopleEmpty').hidden = n > 0;
-    state.contacts.forEach(function (c, i) { list.appendChild(contactRow(c, i, n)); });
+    var vis = visibleContacts();
+    renderSub($('#peopleSub'), n === 1 ? '1 Person' : n + ' Personen', 'people');
+    $('#peopleEmpty').hidden = vis.length > 0;
+    $('#peopleEmptyText').textContent = n ? 'Keine Personen in diesem Bereich.' : 'Noch keine Personen.';
+    vis.forEach(function (c, i) { list.appendChild(contactRow(c, i, vis.length)); });
   }
 
   function contactRow(c, index, total) {
@@ -796,7 +865,7 @@
     row.dataset.id = c.id;
     row.appendChild(el('button', {
       class: 'grip', type: 'button',
-      'aria-label': '„' + c.title + '“ verschieben, Platz ' + (index + 1) + ' von ' + total + '. Pfeiltasten oder ziehen.',
+      'aria-label': '„' + c.name + '“ verschieben, Platz ' + (index + 1) + ' von ' + total + '. Pfeiltasten oder ziehen.',
       onkeydown: function (ev) {
         if (ev.key === 'ArrowUp') { ev.preventDefault(); moveContact(index, index - 1, true); }
         if (ev.key === 'ArrowDown') { ev.preventDefault(); moveContact(index, index + 1, true); }
@@ -808,6 +877,7 @@
     var open = !!state.expanded[c.id];
     var detailId = 'detail-' + c.id;
     var segs = C.linkify(c.info || '');
+    var tags = contactPhases(c).map(function (p) { return el('span', { class: 'tag ph-' + p.color, text: p.label }); });
     var detail = el('div', { class: 'todo-detail', id: detailId }, [
       c.info.trim()
         ? el('p', { class: 'todo-desc' }, segs.map(function (s) {
@@ -815,6 +885,7 @@
             : el('a', { href: s.href, target: s.type === 'url' ? '_blank' : null, rel: s.type === 'url' ? 'noopener' : null, text: s.text });
         }))
         : null,
+      tags.length ? el('div', { class: 'todo-meta' }, tags) : null,
       el('div', { class: 'detail-actions' }, [
         el('button', { class: 'pill', type: 'button', text: 'Bearbeiten', onclick: function () { openContact(c.id); } })
       ])
@@ -830,7 +901,10 @@
         this.setAttribute('aria-expanded', now ? 'true' : 'false');
       }
     }, [
-      el('span', { class: 'todo-title', text: c.title }),
+      el('span', { class: 'contact-text' }, [
+        el('span', { class: 'todo-title', text: c.name }),
+        c.role ? el('span', { class: 'contact-role', text: c.role }) : null
+      ]),
       el('span', { class: 'chev', 'aria-hidden': 'true' })
     ]);
     if (open) row.classList.add('is-open');
@@ -839,9 +913,11 @@
   }
 
   function moveContact(from, to, refocus) {
-    var list = state.contacts;
-    if (to < 0 || to >= list.length || from === to) return;
-    list.splice(to, 0, list.splice(from, 1)[0]);
+    var vis = visibleContacts();
+    if (to < 0 || to >= vis.length || from === to) return;
+    var allIds = state.contacts.map(function (c) { return c.id; });
+    var visIds = vis.map(function (c) { return c.id; });
+    state.contacts = C.orderBy(state.contacts, C.moveWithin(allIds, visIds, from, to));
     saveContacts();
     renderPeople();
     if (refocus) {
@@ -850,41 +926,72 @@
     }
   }
 
+  // Bereiche einer Person – mehrere möglich, Antippen schaltet um
+  function buildContactPhaseChips() {
+    var box = $('#cPhase');
+    box.textContent = '';
+    phases().forEach(function (p) {
+      var on = state.editContactPhases.indexOf(p.id) >= 0;
+      box.appendChild(el('button', {
+        type: 'button', class: 'chip chip-ph ph-' + p.color + (on ? ' is-on' : ''), 'aria-pressed': on ? 'true' : 'false',
+        'data-phase': p.id, text: p.label,
+        onclick: function () {
+          var list = state.editContactPhases;
+          var k = list.indexOf(p.id);
+          if (k >= 0) list.splice(k, 1); else list.push(p.id);
+          buildContactPhaseChips();
+        }
+      }));
+    });
+    $('#cPhaseField').hidden = !phases().length;
+  }
+
   var contactSnapshot = '';
-  function contactFormValue() { return JSON.stringify([$('#cTitle').value, $('#cInfo').value]); }
+  function contactFormValue() {
+    return JSON.stringify([$('#cName').value, $('#cRole').value, state.editContactPhases.slice().sort(), $('#cInfo').value]);
+  }
 
   function openContact(id) {
     var c = id ? findContact(id) : null;
     state.editContact = c ? c.id : null;
     $('#contactDlgTitle').textContent = c ? 'Person' : 'Neue Person';
-    $('#cTitle').value = c ? c.title : '';
+    $('#cName').value = c ? c.name : '';
+    $('#cRole').value = c ? c.role : '';
     $('#cInfo').value = c ? c.info : '';
+    var f = state.settings.peopleFilter;
+    state.editContactPhases = c ? contactPhases(c).map(function (p) { return p.id; })
+      : (f !== 'all' && f !== NONE ? [f] : []);
+    buildContactPhaseChips();
     $('#cEditOnly').hidden = !c;
     autosize($('#cInfo'));
     contactSnapshot = contactFormValue();
     showDialog($('#contactDlg'), function () { return contactFormValue() !== contactSnapshot; });
-    if (!c) setTimeout(function () { $('#cTitle').focus(); }, 60);
+    if (!c) setTimeout(function () { $('#cName').focus(); }, 60);
   }
 
   function saveContactForm() {
-    var title = $('#cTitle').value.trim();
+    var name = $('#cName').value.trim();
+    var role = $('#cRole').value.trim();
     var info = $('#cInfo').value;
-    if (!title) {
-      toast('Bitte einen Titel eintragen.', { error: true });
-      $('#cTitle').focus();
+    if (!name && !role) {
+      toast('Bitte einen Namen eintragen.', { error: true });
+      $('#cName').focus();
       return;
     }
     var stamp = new Date().toISOString();
+    var data = C.normalizeContact({ name: name, role: role, phases: state.editContactPhases.slice(), info: info, createdAt: stamp, updatedAt: stamp });
     var c = state.editContact ? findContact(state.editContact) : null;
     if (c) {
-      if (c.title !== title || c.info !== info) {
-        c.title = title; c.info = info; c.updatedAt = stamp;
+      if (contactFormValue() !== contactSnapshot) {
+        c.name = data.name; c.role = data.role; c.phases = data.phases; c.info = data.info; c.updatedAt = stamp;
       }
     } else {
-      c = C.normalizeContact({ title: title, info: info, createdAt: stamp, updatedAt: stamp });
+      c = data;
       state.contacts.push(c);
     }
     if (!saveContacts()) return;
+    // Sicherstellen, dass die gespeicherte Person im aktuellen Filter sichtbar ist
+    if (visibleContacts().indexOf(c) < 0) { state.settings.peopleFilter = 'all'; saveSettings(); }
     closeDialog(true);
     renderPeople();
     toast('Gespeichert.');
@@ -892,7 +999,7 @@
 
   function deleteContact() {
     var c = findContact(state.editContact);
-    if (!c || !confirm('„' + shorten(c.title, 60) + '“ löschen?')) return;
+    if (!c || !confirm('„' + shorten(c.name, 60) + '“ löschen?')) return;
     var pos = state.contacts.indexOf(c);
     state.contacts.splice(pos, 1);
     saveContacts();
@@ -956,9 +1063,11 @@
   // keepInputs: beim Umbenennen nicht neu zeichnen, sonst springt der Fokus
   function savePhases(keepInputs) {
     state.settings.filter = validFilter(state.settings.filter);
+    state.settings.peopleFilter = validFilter(state.settings.peopleFilter);
     saveSettings();
     if (!keepInputs) renderPhases();
     renderTodos();
+    renderPeople();
   }
 
   function movePhase(from, to, refocus) {
@@ -983,10 +1092,10 @@
   }
 
   function deletePhase(p) {
-    var affected = state.todos.filter(function (t) { return t.phase === p.id; });
+    var n = state.todos.filter(function (t) { return t.phase === p.id; }).length +
+      state.contacts.filter(function (c) { return c.phases.indexOf(p.id) >= 0; }).length;
     var msg = '„' + p.label + '“ löschen?';
-    if (affected.length) msg += '\n\n' + affected.length + (affected.length === 1 ? ' To-do ist' : ' To-dos sind') +
-      ' diesem Bereich zugeordnet. Sie bleiben erhalten, stehen dann aber ohne Bereich.';
+    if (n) msg += '\n\nZugeordnete To-dos und Personen bleiben erhalten, nur ohne diesen Bereich.';
     if (!confirm(msg)) return;
     var list = phases();
     var pos = list.indexOf(p);
@@ -1036,6 +1145,7 @@
       state.contacts = data.contacts;
       if (data.phases) state.settings.phases = data.phases;
       state.settings.filter = validFilter(state.settings.filter);
+      state.settings.peopleFilter = validFilter(state.settings.peopleFilter);
       saveTodos(); saveContacts(); saveSettings();
       renderAll();
       toast('Sicherung geladen.');
@@ -1115,6 +1225,18 @@
     });
     $('#tDelete').addEventListener('click', deleteTodo);
     $('#cDelete').addEventListener('click', deleteContact);
+
+    // Filter
+    $$('.filterbtn').forEach(function (b) {
+      b.setAttribute('aria-haspopup', 'menu');
+      b.addEventListener('click', function (ev) { ev.stopPropagation(); openFilterMenu(b.dataset.filter, b); });
+    });
+    document.addEventListener('click', function (ev) {
+      if (!$('#filterMenu').hidden && !ev.target.closest('#filterMenu')) closeFilterMenu();
+    });
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') closeFilterMenu(); });
+
+    wireSwipe();
     $('#phaseAdd').addEventListener('click', addPhase);
 
     $('#toastAction').addEventListener('click', function () {
@@ -1157,6 +1279,33 @@
         }
       });
     }
+  }
+
+  /* ------------------------------------------------------------ Wischen */
+
+  // Seitlich wischen wechselt zwischen To-dos und Personen
+  function wireSwipe() {
+    var start = null;
+    var BLOCK = '.grip, input, textarea, select, dialog, .menu, .phase-list, .toast';
+    document.addEventListener('touchstart', function (ev) {
+      start = null;
+      if (ev.touches.length !== 1 || openDialog || ev.target.closest(BLOCK)) return;
+      if (VIEW_ORDER.indexOf(state.view) < 0) return;
+      var t = ev.touches[0];
+      start = { x: t.clientX, y: t.clientY, at: Date.now() };
+    }, { passive: true });
+    document.addEventListener('touchend', function (ev) {
+      if (!start || $('.is-sorting')) { start = null; return; }
+      var t = ev.changedTouches[0];
+      var dx = t.clientX - start.x;
+      var dy = t.clientY - start.y;
+      var quick = Date.now() - start.at < 800;
+      start = null;
+      if (!quick || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.8) return;
+      var i = VIEW_ORDER.indexOf(state.view);
+      var next = VIEW_ORDER[i + (dx < 0 ? 1 : -1)];
+      if (next) showView(next, dx < 0 ? 'right' : 'left');
+    }, { passive: true });
   }
 
   /* -------------------------------------------------------- Installieren */
