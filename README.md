@@ -79,7 +79,7 @@ das Handy online ist. Spätestens beim zweiten Öffnen ist die neue Version akti
 | Reihenfolge ändern | Griff **⠿** (mit Platznummer) gedrückt halten und ziehen |
 | Erledigt | Kreis antippen – kurz danach „Rückgängig“ möglich |
 | Bearbeiten | Block aufklappen → **Bearbeiten** |
-| Löschen | Im To-do ganz unten |
+| Löschen | Block aufklappen → **Löschen** (kurz danach „Rückgängig“ möglich) |
 | Nach Bereich filtern | Trichter-Symbol oben rechts; × neben dem Filternamen hebt ihn auf |
 | Bereiche ändern | **Mehr → Bereiche**: Namen antippen, Farbpunkt antippen, × zum Löschen (To-dos und Personen bleiben erhalten) |
 | Seite wechseln | Seitlich wischen zwischen To-dos und Personen, oder unten antippen |

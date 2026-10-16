@@ -355,6 +355,7 @@ button { cursor: pointer; }
 .todo-desc.is-empty { color: var(--text-faint); font-style: italic; }
 .todo-meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13px; color: var(--text-dim); }
 .detail-actions { display: flex; gap: 8px; }
+.pill-danger { color: var(--danger); }
 
 .tag {
   font-size: 11.5px;

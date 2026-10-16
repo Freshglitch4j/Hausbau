@@ -6,7 +6,7 @@
   'use strict';
 
   var C = window.HausCore;
-  var APP_VERSION = '1.8';
+  var APP_VERSION = '1.9';
   var KEY_TODOS = 'hausbau.todos.v1';
   var KEY_CONTACTS = 'hausbau.contacts.v1';
   var KEY_NOTES = 'hausbau.notes.v1';      // bis 1.2 – wird zu Personen übernommen
@@ -371,7 +371,8 @@
         : el('p', { class: 'todo-desc is-empty', text: 'Keine Beschreibung.' }),
       el('div', { class: 'todo-meta' }, meta),
       el('div', { class: 'detail-actions' }, [
-        el('button', { class: 'pill', type: 'button', text: 'Bearbeiten', onclick: function () { openTodo(t.id); } })
+        el('button', { class: 'pill', type: 'button', text: 'Bearbeiten', onclick: function () { openTodo(t.id); } }),
+        el('button', { class: 'pill pill-danger', type: 'button', text: 'Löschen', onclick: function () { deleteTodo(t.id); } })
       ])
     ]);
     detail.hidden = !open;
@@ -801,13 +802,15 @@
     toast('Gespeichert.');
   }
 
-  function deleteTodo() {
-    var t = findTodo(state.editTodo);
-    if (!t || !confirm('„' + shorten(t.title, 60) + '“ löschen?')) return;
+  // Ein Tipp löscht – statt Sicherheitsabfrage gibt es „Rückgängig“
+  function deleteTodo(id) {
+    var t = findTodo(id);
+    if (!t) return;
     var pos = state.todos.indexOf(t);
     state.todos.splice(pos, 1);
+    delete state.expanded[t.id];
     saveTodos();
-    closeDialog(true);
+    if (openDialog) closeDialog(true);
     renderTodos();
     toast('Gelöscht.', {
       action: 'Rückgängig',
@@ -887,7 +890,8 @@
         : null,
       tags.length ? el('div', { class: 'todo-meta' }, tags) : null,
       el('div', { class: 'detail-actions' }, [
-        el('button', { class: 'pill', type: 'button', text: 'Bearbeiten', onclick: function () { openContact(c.id); } })
+        el('button', { class: 'pill', type: 'button', text: 'Bearbeiten', onclick: function () { openContact(c.id); } }),
+        el('button', { class: 'pill pill-danger', type: 'button', text: 'Löschen', onclick: function () { deleteContact(c.id); } })
       ])
     ]);
     detail.hidden = !open;
@@ -997,13 +1001,14 @@
     toast('Gespeichert.');
   }
 
-  function deleteContact() {
-    var c = findContact(state.editContact);
-    if (!c || !confirm('„' + shorten(c.name, 60) + '“ löschen?')) return;
+  function deleteContact(id) {
+    var c = findContact(id);
+    if (!c) return;
     var pos = state.contacts.indexOf(c);
     state.contacts.splice(pos, 1);
+    delete state.expanded[c.id];
     saveContacts();
-    closeDialog(true);
+    if (openDialog) closeDialog(true);
     renderPeople();
     toast('Gelöscht.', {
       action: 'Rückgängig',
@@ -1223,8 +1228,8 @@
       closeDialog(true);
       if (wasDone) { setDone(t.id, false); toast('Wieder offen.'); } else completeTodo(t.id);
     });
-    $('#tDelete').addEventListener('click', deleteTodo);
-    $('#cDelete').addEventListener('click', deleteContact);
+    $('#tDelete').addEventListener('click', function () { deleteTodo(state.editTodo); });
+    $('#cDelete').addEventListener('click', function () { deleteContact(state.editContact); });
 
     // Filter
     $$('.filterbtn').forEach(function (b) {

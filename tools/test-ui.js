@@ -159,6 +159,17 @@ async function swipe(page, dx) {
   t = await titles(page);
   ok(t[0] === 'Termin beim Notar', 'Rückgängig stellt Position wieder her');
 
+  // To-do direkt aus dem aufgeklappten Block löschen, mit Rückgängig
+  const before3 = await titles(page);
+  await page.click('#todoList .todo-row:nth-child(3) .todo-head');
+  await page.waitForTimeout(250);
+  await shot(page, '02c-loeschen');
+  await page.click('#todoList .todo-row:nth-child(3) .detail-actions .pill:has-text("Löschen")');
+  t = await titles(page);
+  ok(t.length === before3.length - 1 && !t.includes(before3[2]), 'To-do mit einem Tipp gelöscht');
+  await page.click('#toastAction');
+  ok(JSON.stringify(await titles(page)) === JSON.stringify(before3), 'Rückgängig stellt To-do an alter Stelle wieder her');
+
   // Erinnerung in der Zukunft feuert, wenn die Zeit erreicht ist
   await page.click('#todoList .todo-row:nth-child(2) .todo-head');
   await page.click('#todoList .todo-row:nth-child(2) .detail-actions .pill');
@@ -220,6 +231,13 @@ async function swipe(page, dx) {
   await page.click('#contactDlg [data-close]');
   ok(!(await page.isVisible('#contactDlg')), 'Abbrechen schließt Dialog');
   ok((await people())[0] === 'Maria Gruber', 'Abbrechen verwirft Änderung');
+
+  // Löschen direkt aus dem aufgeklappten Block, mit Rückgängig
+  if (!(await page.$('#contactList .todo-row:first-child.is-open'))) await page.click('#contactList .todo-row:first-child .todo-head');
+  await page.click('#contactList .todo-row:first-child .detail-actions .pill:has-text("Löschen")');
+  ok(JSON.stringify(await people()) === JSON.stringify(['Alois Huber']), 'Person mit einem Tipp gelöscht');
+  await page.click('#toastAction');
+  ok((await people())[0] === 'Maria Gruber', 'Rückgängig stellt Person an alter Stelle wieder her');
 
   // Seitlich wischen: Personen → To-dos → Personen
   await swipe(page, 220);
