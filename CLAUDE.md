@@ -18,6 +18,12 @@ anderen Apps des Nutzers (Schlaftagebuch, Fitness).
 - Neue Funktionen fügen sich in dieses Muster ein (Liste → aufklappen →
   Bearbeiten, Sortieren am Griff ⠿).
 
+## Farben
+
+- Grundton (dunkles Design, App-Icon, Statusleiste): **Deep Petrol #1C4D5C**
+  (Wunsch des Nutzers: „Petrol deep 530“). Akzent: Terrakotta.
+- Icon neu erzeugen: `python3 tools/make-icons.py`.
+
 ## Ablauf bei Änderungen
 
 1. `VERSION` in `sw.js` erhöhen **und** dieselbe Zahl in `index.html` bei

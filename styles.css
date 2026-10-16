@@ -5,37 +5,39 @@
    ========================================================================= */
 
 :root {
-  --bg: #15181d;
-  --bg-elev: #1d2128;
-  --bg-elev-2: #252a33;
-  --line: #313744;
-  --line-soft: #262b35;
-  --text: #ece8e1;
-  --text-dim: #a4aab5;
-  --text-faint: #717887;
-  --accent: #e08a5f;
+  /* Grundton: Deep Petrol #1C4D5C */
+  --bg: #1c4d5c;
+  --bg-elev: #235968;
+  --bg-elev-2: #2a6474;
+  --line: #3b7484;
+  --line-soft: #2d6372;
+  --text: #f2eee7;
+  --text-dim: #c0d3d7;
+  --text-faint: #93b3ba;
+  --accent: #eb9a70;
   --accent-ink: #1b0f08;
-  --accent-soft: rgba(224, 138, 95, 0.14);
-  --danger: #d9776a;
-  --danger-soft: rgba(217, 119, 106, 0.14);
-  --warn: #e3b25b;
-  --warn-soft: rgba(227, 178, 91, 0.14);
-  --good: #8db58a;
+  --accent-soft: rgba(235, 154, 112, 0.16);
+  --danger: #ff9f8c;
+  --danger-soft: rgba(255, 159, 140, 0.16);
+  --warn: #f3c76c;
+  --warn-soft: rgba(243, 199, 108, 0.16);
+  --good: #a6d8a0;
   --radius: 14px;
   --radius-lg: 20px;
   --tap: 48px;
   --page: 16px;
-  --shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  --shadow: 0 10px 28px rgba(4, 22, 28, 0.45);
+  --next-bg: var(--bg-elev-2);
 
   /* Farben für Bereiche (frei zuordenbar) */
-  --ph-1: #8fb0d9;
-  --ph-2: #8ec29a;
-  --ph-3: #c6a2e0;
-  --ph-4: #e08a5f;
-  --ph-5: #e3c06b;
-  --ph-6: #a4aab5;
-  --ph-7: #6fc3c0;
-  --ph-8: #e693b4;
+  --ph-1: #a9c8f0;
+  --ph-2: #a6dcae;
+  --ph-3: #d8b8f0;
+  --ph-4: #f3a47c;
+  --ph-5: #f3d27c;
+  --ph-6: #c3d0d4;
+  --ph-7: #8ff0e4;
+  --ph-8: #f5a8c6;
   color-scheme: dark;
 }
 
@@ -57,6 +59,7 @@
   --warn-soft: rgba(196, 140, 30, 0.13);
   --good: #3f7a3a;
   --shadow: 0 8px 22px rgba(40, 30, 20, 0.14);
+  --next-bg: #fbf1ec;
 
   --ph-1: #2f6aa8;
   --ph-2: #2f7d45;
@@ -181,7 +184,7 @@ button { cursor: pointer; }
 
 .todo-row.is-next {
   border-color: var(--accent);
-  background: linear-gradient(0deg, var(--accent-soft), var(--accent-soft)), var(--bg-elev);
+  background: var(--next-bg);
 }
 /* Überfällig: roter Streifen links, auch im zugeklappten Zustand sichtbar */
 .todo-row.is-overdue { box-shadow: inset 3px 0 0 var(--danger); }
@@ -438,7 +441,7 @@ button { cursor: pointer; }
   color: var(--text-dim);
   font-size: 14.5px;
 }
-.seg button[aria-checked="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 700; box-shadow: inset 0 0 0 1px var(--accent); }
+.seg button[aria-checked="true"] { background: var(--bg-elev); color: var(--accent); font-weight: 700; box-shadow: inset 0 0 0 1px var(--accent); }
 
 .fab {
   position: fixed;

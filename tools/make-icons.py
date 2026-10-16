@@ -3,9 +3,9 @@ import os
 from PIL import Image, ImageDraw
 
 ROOT = os.path.join(os.path.dirname(__file__), '..')
-BG = (21, 24, 29)
+BG = (28, 77, 92)       # Deep Petrol #1C4D5C
 ACCENT = (224, 138, 95)
-INK = (27, 15, 8)
+INK = (28, 77, 92)      # Häkchen in Petrol
 S = 2048  # in großer Auflösung zeichnen, dann verkleinern (glatte Kanten)
 
 

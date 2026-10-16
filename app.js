@@ -6,7 +6,7 @@
   'use strict';
 
   var C = window.HausCore;
-  var APP_VERSION = '1.5';
+  var APP_VERSION = '1.6';
   var KEY_TODOS = 'hausbau.todos.v1';
   var KEY_CONTACTS = 'hausbau.contacts.v1';
   var KEY_NOTES = 'hausbau.notes.v1';      // bis 1.2 – wird zu Personen übernommen
@@ -153,7 +153,7 @@
     var resolved = t === 'auto' ? (darkMQ && !darkMQ.matches ? 'light' : 'dark') : t;
     document.documentElement.setAttribute('data-theme', resolved);
     var meta = $('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', resolved === 'light' ? '#f1efeb' : '#15181d');
+    if (meta) meta.setAttribute('content', resolved === 'light' ? '#f1efeb' : '#1c4d5c');
     $$('#themeSeg [data-theme-choice]').forEach(function (b) {
       b.setAttribute('aria-checked', b.dataset.themeChoice === t ? 'true' : 'false');
     });
